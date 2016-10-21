@@ -138,7 +138,7 @@ namespace nfd {
 
             serial_manager(boost::condition_variable_any& );
 
-            void read_data(std::map<std::string,std::set<std::string>>&);
+            void read_data(std::map<std::string,std::set<std::string>>& ,std::map<std::string,std::string>&);
 
             int set_opt(int nSpeed, int nBits, char nEvent, int nStop);
 
@@ -149,7 +149,7 @@ namespace nfd {
 
             int pack_data_content(char* name, char *content);
 
-            void topo_management();
+            void topo_management(std::set<std::string> &);
 
             int handle_interest(char *interest);
 

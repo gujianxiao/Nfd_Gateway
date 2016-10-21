@@ -10,10 +10,23 @@ namespace nfd {
 	void
 	Nwd::initialize()
 	{
-		m_face.setInterestFilter("/wsn",
-                             bind(&Nwd::onInterest, this, _1, _2),
+		
+		m_face.setInterestFilter("/wsn/topo",
+                             bind(&Nwd::Topo_onInterest, this, _1, _2),
                              ndn::RegisterPrefixSuccessCallback(),
                              bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+		
+		m_face.setInterestFilter("/wsn",
+									 bind(&Nwd::onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+		m_face.setInterestFilter("/wsn/location",
+									 bind(&Nwd::Location_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+		
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
 		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
@@ -23,7 +36,7 @@ namespace nfd {
 //		std::cout<<"data_set max_size is"<<data_set.max_size()<<std::endl;
 		
 //		threadGroup.create_thread(boost::bind(&Nwd::io_service_run,this));
-//        threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
+        threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
     	m_face.processEvents();
 		
 	}
@@ -37,13 +50,67 @@ namespace nfd {
 		m_tsync.async_wait(boost::bind(&Nwd::time_sync,this));
 	}
 
+	void
+	Nwd::Location_onInterest(const InterestFilter& filter, const Interest& interest)
+	{
+		std::cout << "<< I: " << interest << std::endl;
+		std::string interest_name = interest.getName().toUri();
+		std::string data_val;
+		for(auto& itr:location_map){
+			data_val+=itr.first;
+			data_val+="->";
+			data_val+=itr.second;
+			data_val+="$$";
+		}
+	    Name dataName(interest_name);
+	  
+	   	shared_ptr<Data> data = make_shared<Data>();
+      	data->setName(dataName);
+      	data->setFreshnessPeriod(time::seconds(10));
+      	data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()),data_val.size());
+	 	 m_keyChain.sign(*data);
+
+	  	std::cout << ">> D: " << *data << std::endl;
+      	m_face.put(*data);
+		
+	}
+
+	void
+	Nwd::Topo_onInterest(const InterestFilter& filter, const Interest& interest)
+	{
+		std::cout << "<< I: " << interest << std::endl;
+		std::string interest_name = interest.getName().toUri();
+		std::string data_val;	
+		std::cout<<"before"<<std::endl;
+		for(auto & itr:topo_data){
+			data_val+=itr;
+			data_val+="$$";
+		}
+		Name dataName(interest_name);
+	  
+	  shared_ptr<Data> data = make_shared<Data>();
+      data->setName(dataName);
+      data->setFreshnessPeriod(time::seconds(10));
+      data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()),data_val.size());
+	  m_keyChain.sign(*data);
+
+	  std::cout << ">> D: " << *data << std::endl;
+      m_face.put(*data);
+		
+	}	
 	
 
 	void
   	Nwd::onInterest(const InterestFilter& filter, const Interest& interest)
   	{
-    	std::cout << "<< I: " << interest << std::endl;
+    	
 		std::string interest_name = interest.getName().toUri();
+		if(interest_name.find("topo") != std::string::npos)
+			return ;
+		if(interest_name.find("location") != std::string::npos)
+			return ;
+		std::cout << "<< I: " << interest << std::endl;
+		
 		std::string::size_type pos = 0;
         while ((pos = interest_name.find("%2C", pos)) != std::string::npos){
             interest_name.replace(pos, 3, ",");
@@ -160,7 +227,7 @@ namespace nfd {
   void 
   Nwd::listen_wsn_data(serial_manager *sm)
   {    
-  	   sm->read_data(interest_list);
+  	   sm->read_data(interest_list,location_map);
 	   
   }
 
@@ -211,7 +278,7 @@ namespace nfd {
   void 
   Nwd::manage_wsn_topo(serial_manager *sm)
   {
-	sm->topo_management();
+	sm->topo_management(topo_data);
   }
 
   }

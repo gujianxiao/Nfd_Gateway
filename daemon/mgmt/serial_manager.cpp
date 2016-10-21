@@ -111,7 +111,7 @@ namespace nfd {
 			return false;
 		}
 
-        void serial_manager::read_data(std::map<std::string,std::set<std::string>>& In_List) {
+        void serial_manager::read_data(std::map<std::string,std::set<std::string>>& In_List,std::map<std::string,std::string>& location_map) {
 
             DEBUG printf("\u3010create listening thread successed!!\u3011\n");
             int i, j;
@@ -305,6 +305,10 @@ namespace nfd {
                     printf("nodeID=%d->(%d,%d)\n",
                            node->nodeID, nodeID_mapping_table[node->nodeID].coordinate.x,
                            nodeID_mapping_table[node->nodeID].coordinate.y);
+					char tmp[64];
+					sprintf(tmp,"(%d,%d)",nodeID_mapping_table[node->nodeID].coordinate.x,
+                           nodeID_mapping_table[node->nodeID].coordinate.y);
+					location_map.insert(std::make_pair(to_string(node->nodeID),tmp));
                     free(node);
                 }
                 for (move_pos = total_read - 1; move_pos >= total_read - 7; move_pos--) {
@@ -660,9 +664,12 @@ namespace nfd {
         /**
          * \u62d3\u6251\u7ba1\u7406\u4e0e\u91cd\u5efa
          */
-        void serial_manager::topo_management() {
+        void serial_manager::topo_management(std::set<std::string> & topo_dataset ) {
             DEBUG printf("\u3010create topo management thread successed!!\u3011\n");
             uint8_t topo_rebuild_flag = 0;
+//			char topo_tmp[64]={'\0'};
+			std::string topo_tmp;
+			
             while (thread_flag) {
                 //\u7b49\u5f85\u91cd\u5efa\u4fe1\u53f7\u5230\u6765
                 sem_wait(&sem_queue);
@@ -671,11 +678,28 @@ namespace nfd {
                 int i;
                 if (bottom >= PTR_MAX)
                     bottom = bottom % PTR_MAX;
+				
                 for (i = 0; i < topo->num; i++) {
                     //\u6253\u5370\u62d3\u6251\u7ed3\u6784
-                    printf("%d -> ", topo->data[i]);
+                    char tmp[64];
+                    if(topo->data[i] == 1){
+//						printf("%d ", topo->data[i]);
+						sprintf(tmp,"%d",topo->data[i]);
+                    }
+					else{
+//                    	printf("%d -> ", topo->data[i]);
+						sprintf(tmp,"%d->",topo->data[i]);
+					}
+					topo_tmp+=tmp;
+					
+//					topo_data+=topo_tmp;
+					
                 }
-                printf("NULL\n");
+	           
+				std::cout<<topo_tmp<<std::endl;
+				topo_dataset.insert(topo_tmp);
+				topo_tmp.clear();
+//				printf("%s\n",topo_tmp.data());
 //                topo_tree_recycling();
                 topo_tree_build(&topo_head, topo->data, topo->num - 1, &topo_rebuild_flag);
                 if (topo_rebuild_flag) {

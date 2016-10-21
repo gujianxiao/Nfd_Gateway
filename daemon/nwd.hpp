@@ -37,6 +37,13 @@ namespace nfd{
   		onInterest(const InterestFilter& filter, const Interest& interest);
 
 		void
+		Topo_onInterest(const InterestFilter& filter, const Interest& interest);
+
+		void
+		Location_onInterest(const InterestFilter& filter, const Interest& interest);
+	
+
+		void
   		onRegisterFailed(const Name& prefix, const std::string& reason);
 
 		void 
@@ -80,6 +87,8 @@ namespace nfd{
 		boost::asio::steady_timer m_tsync; //for time sync
 		int local_timestamp;
 		std::set<WsnData> data_set;
+		std::set<std::string> topo_data;
+		std::map<std::string,std::string> location_map;
 	};
 
 	}
