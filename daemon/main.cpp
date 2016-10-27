@@ -219,10 +219,10 @@ public:
   void
   initialize_nwd()
   {
-  	boost::thread nwdThread([]{		
+  	boost::thread nwdThread([this]{		
 //		boost::asio::io_service* nwdIo = nullptr;
 		boost::this_thread::sleep(boost::posix_time::seconds(2)); 
-		gateway::Nwd nwd;
+		gateway::Nwd nwd(m_nfd);
 		nwd.initialize();
 		
 		});

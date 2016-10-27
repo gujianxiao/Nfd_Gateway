@@ -92,6 +92,9 @@ public:
   void
   reloadConfigFile();
 
+  shared_ptr<Forwarder>
+  get_Forwarder();     //modified by ywb
+
 private:
   void
   initializeLogging();
@@ -102,11 +105,13 @@ private:
   void
   reloadConfigFileFaceSection();
 
+  
+
 private:
   std::string m_configFile;
   ConfigSection m_configSection;
 
-  unique_ptr<Forwarder> m_forwarder;
+  shared_ptr<Forwarder> m_forwarder;     //change unique_ptr to shared_ptr
 
   ndn::KeyChain&               m_keyChain;
   shared_ptr<face::Face>       m_internalFace;

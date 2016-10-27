@@ -45,6 +45,8 @@ public:
   const Interest&
   getInterest() const;
 
+ 
+
 private:
   shared_ptr<const Interest> m_interest;
 };

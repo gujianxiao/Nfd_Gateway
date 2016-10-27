@@ -141,6 +141,13 @@ ignoreRibAndLogSections(const std::string& filename, const std::string& sectionN
   }
 }
 
+shared_ptr<Forwarder>
+Nfd::get_Forwarder()
+{
+	return m_forwarder;
+}
+
+
 void
 Nfd::initializeManagement()
 {

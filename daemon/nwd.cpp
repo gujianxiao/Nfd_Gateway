@@ -3,7 +3,16 @@
 
 namespace nfd {
 	namespace gateway{
-	Nwd::Nwd():m_serialManager(data_ready),m_t(m_face.getIoService()),m_tsync(m_face.getIoService()),local_timestamp(0){
+
+	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
+	const uint64_t Nwd::DEFAULT_COST = 0;
+		
+	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) , 
+		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
+		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
+		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
+		m_tsync(m_face.getIoService()),local_timestamp(0),m_forwarder(nfd.get_Forwarder())
+	{
 //		io.run();
 	}
 	
@@ -26,6 +35,11 @@ namespace nfd {
 									 bind(&Nwd::Location_onInterest, this, _1, _2),
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+		m_face.setInterestFilter("/wifi/register",
+									 bind(&Nwd::Wifi_Register_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 		
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
@@ -39,6 +53,87 @@ namespace nfd {
         threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
     	m_face.processEvents();
 		
+	}
+
+	void
+	Nwd::Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest)
+	{
+		std::cout << "<< I: " << interest << std::endl;
+		std::string interest_name = interest.getName().toUri();
+		
+		face_name=interest_name;
+		face_name.erase(5,9);
+		std::cout<<face_name<<std::endl;
+		auto pit_entry_itr=m_forwarder->getPit().begin();
+//		++pit_entry_itr;
+		for(;pit_entry_itr!=m_forwarder->getPit().end();pit_entry_itr++){
+			
+			std::ostringstream os;
+			os<<(*pit_entry_itr).getInterest()<<std::endl;
+			if(os.str().find("/wifi/register")!=std::string::npos){
+//				std::cout<<os.str()<<std::endl;
+				for(auto pit_entryIn_itr=(*pit_entry_itr).in_begin();pit_entryIn_itr!=(*pit_entry_itr).in_end();pit_entryIn_itr++){
+//					std::cout<<(*pit_entryIn_itr).getInterest()<<std::endl;
+					std::ostringstream oss;
+//					std::cout<<(*pit_entryIn_itr).getFace()->getLocalUri()<<std::endl;
+					oss<<(*pit_entryIn_itr).getFace()->getRemoteUri()<<std::endl;
+					remote_name=oss.str();
+					std::string::size_type pos=remote_name.rfind(":");
+					remote_name.erase(pos);
+					std::cout<<remote_name<<std::endl;
+					ribRegisterPrefix();
+				}
+			}
+		}
+
+		Name dataName(interest_name);
+	  	std::string data_val("success");
+	  	shared_ptr<Data> data = make_shared<Data>();
+     	data->setName(dataName);
+      	data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()), data_val.size());
+	  	m_keyChain.sign(*data);
+	
+	    std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);
+
+//		nfd::FaceTable& faceTable = m_forwarder->getFaceTable();
+//		for(auto itr=faceTable.begin();itr!=faceTable.end();itr++){
+//			std::cout<<(*itr)->getRemoteUri()<<std::endl;
+//		}
+//		for(auto itr:faceTable.m_faces){
+//			std::cout<<*itr.first<<std::endl;
+//		}
+//		m_forwarder->getFaceTable();
+
+	}		
+
+	void
+	Nwd::ribRegisterPrefix()
+	{
+//		m_name=face_name;
+		const std::string& faceName=remote_name;
+		FaceIdFetcher::start(m_face, m_controller, faceName, true,
+                       [this] (const uint32_t faceId) {
+                         ControlParameters parameters;
+                         parameters
+                           .setName(face_name)
+                           .setCost(m_cost)
+                           .setFlags(m_flags)
+                           .setOrigin(m_origin)
+                           .setFaceId(faceId);
+
+                         if (m_expires != DEFAULT_EXPIRATION_PERIOD)
+                           parameters.setExpirationPeriod(m_expires);
+
+                         m_controller
+                           .start<RibRegisterCommand>(parameters,
+                                                      bind(&Nwd::onSuccess, this, _1,
+                                                           "Successful in name registration"),
+                                                      bind(&Nwd::onError, this, _1, _2,
+                                                           "Failed in name registration"));
+                       },
+                       bind(&Nwd::onObtainFaceIdFailure, this, _1));
 	}
 
 	void
@@ -280,6 +375,206 @@ namespace nfd {
   {
 	sm->topo_management(topo_data);
   }
+
+  void
+  Nwd::onSuccess(const ControlParameters& commandSuccessResult, const std::string& message)
+  {
+	 std::cout<<"in onsuccess"<<std::endl;
+	 std::cout << message << ": " << commandSuccessResult << std::endl;
+  }
+
+  void
+  Nwd::onError(uint32_t code, const std::string& error, const std::string& message)
+  {
+     std::ostringstream os;
+     os << message << ": " << error << " (code: " << code << ")";
+     BOOST_THROW_EXCEPTION(Error(os.str()));
+  }
+
+  void
+  Nwd::onObtainFaceIdFailure(const std::string& message)
+ {
+ 	 BOOST_THROW_EXCEPTION(Error(message));
+ }
+  
+
+  Nwd::FaceIdFetcher::FaceIdFetcher(ndn::Face& face,
+                                   ndn::nfd::Controller& controller,
+                                   bool allowCreate,
+                                   const SuccessCallback& onSucceed,
+                                   const FailureCallback& onFail)
+  : m_face(face)
+  , m_controller(controller)
+  , m_allowCreate(allowCreate)
+  , m_onSucceed(onSucceed)
+  , m_onFail(onFail){}
+
+ void
+ Nwd::FaceIdFetcher::start(ndn::Face& face,
+                           ndn::nfd::Controller& controller,
+                           const std::string& input,
+                           bool allowCreate,
+                           const SuccessCallback& onSucceed,
+                           const FailureCallback& onFail)
+{
+  // 1. Try parse input as FaceId, if input is FaceId, succeed with parsed FaceId
+  // 2. Try parse input as FaceUri, if input is not FaceUri, fail
+  // 3. Canonize faceUri
+  // 4. If canonization fails, fail
+  // 5. Query for face
+  // 6. If query succeeds and finds a face, succeed with found FaceId
+  // 7. Create face
+  // 8. If face creation succeeds, succeed with created FaceId
+  // 9. Fail
+  
+  boost::regex e("^[a-z0-9]+\\:.*");
+  if (!boost::regex_match(input, e)) {
+    try
+      {
+        u_int32_t faceId = boost::lexical_cast<uint32_t>(input);
+		
+        onSucceed(faceId);
+        return;
+      }
+    catch (boost::bad_lexical_cast&)
+      {
+      	
+        onFail("No valid faceId or faceUri is provided");
+        return;
+      }
+  }
+  else {
+  	
+    ndn::util::FaceUri faceUri;
+    if (!faceUri.parse(input)) {
+      onFail("FaceUri parse failed");
+      return;
+    }
+	
+    auto fetcher = new FaceIdFetcher(std::ref(face), std::ref(controller),
+                                     allowCreate, onSucceed, onFail);
+
+    fetcher->startGetFaceId(faceUri);
+  }
+}
+
+void
+Nwd::FaceIdFetcher::startGetFaceId(const ndn::util::FaceUri& faceUri)
+{
+ 
+  faceUri.canonize(bind(&FaceIdFetcher::onCanonizeSuccess, this, _1),
+                   bind(&FaceIdFetcher::onCanonizeFailure, this, _1),
+                   m_face.getIoService(), ndn::time::seconds(4));
+}
+
+void
+Nwd::FaceIdFetcher::onCanonizeSuccess(const ndn::util::FaceUri& canonicalUri)
+{
+  
+  ndn::Name queryName("/localhost/nfd/faces/query");
+  ndn::nfd::FaceQueryFilter queryFilter;
+  queryFilter.setRemoteUri(canonicalUri.toString());
+  queryName.append(queryFilter.wireEncode());
+
+  ndn::Interest interestPacket(queryName);
+  interestPacket.setMustBeFresh(true);
+  interestPacket.setInterestLifetime(ndn::time::milliseconds(4000));
+  auto interest = std::make_shared<ndn::Interest>(interestPacket);
+  
+  ndn::util::SegmentFetcher::fetch(m_face, *interest,
+                                   m_validator,
+                                   bind(&FaceIdFetcher::onQuerySuccess,
+                                        this, _1, canonicalUri),
+                                   bind(&FaceIdFetcher::onQueryFailure,
+                                        this, _1, canonicalUri));
+} 
+
+ void
+ Nwd::FaceIdFetcher::onCanonizeFailure(const std::string& reason)
+ {
+	fail("Canonize faceUri failed : " + reason);
+ }
+
+ void
+ Nwd::FaceIdFetcher::onQuerySuccess(const ndn::ConstBufferPtr& data,
+                                    const ndn::util::FaceUri& canonicalUri)
+{
+  
+  size_t offset = 0;
+  bool isOk = false;
+  ndn::Block block;
+  std::tie(isOk, block) = ndn::Block::fromBuffer(data, offset);
+
+  if (!isOk) {
+    if (m_allowCreate) {
+      startFaceCreate(canonicalUri);
+    }
+    else {
+      fail("Fail to find faceId");
+    }
+  }
+  else {
+    try {
+      FaceStatus status(block);
+      succeed(status.getFaceId());
+    }
+    catch (const ndn::tlv::Error& e) {
+      std::string errorMessage(e.what());
+      fail("ERROR: " + errorMessage);
+    }
+  }
+}
+
+void
+Nwd::FaceIdFetcher::onQueryFailure(uint32_t errorCode,
+                                    const ndn::util::FaceUri& canonicalUri)
+{
+  std::stringstream ss;
+  ss << "Cannot fetch data (code " << errorCode << ")";
+  fail(ss.str());
+}
+
+void
+Nwd::FaceIdFetcher::fail(const std::string& reason)
+{
+	m_onFail(reason);
+	delete this;
+}
+
+void
+Nwd::FaceIdFetcher::succeed(uint32_t faceId)
+{
+  
+  m_onSucceed(faceId);
+  
+  delete this;
+}
+
+  void
+  Nwd::FaceIdFetcher::startFaceCreate(const ndn::util::FaceUri& canonicalUri)
+  {
+	 ControlParameters parameters;
+ 	 parameters.setUri(canonicalUri.toString());
+
+  	 m_controller.start<FaceCreateCommand>(parameters,
+                                        [this] (const ControlParameters& result) {
+                                          succeed(result.getFaceId());
+                                        },
+                                        bind(&FaceIdFetcher::onFaceCreateError, this, _1, _2,
+                                             "Face creation failed"));
+  }
+
+ void
+ Nwd::FaceIdFetcher::onFaceCreateError(uint32_t code,
+                                       const std::string& error,
+                                       const std::string& message)
+ {
+  	std::stringstream ss;
+  	ss << message << " : " << error << " (code " << code << ")";
+ 	fail(ss.str());
+ }
+
+
 
   }
 }

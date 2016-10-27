@@ -13,6 +13,24 @@
 #include <boost/chrono.hpp>
 #include <boost/bind.hpp>
 #include "wsn-data.hpp"
+#include "fw/forwarder.hpp"
+#include "nfd.hpp"
+#include <ndn-cxx/management/nfd-controller.hpp>
+#include <ndn-cxx/security/validator-null.hpp>
+#include <ndn-cxx/util/face-uri.hpp>
+#include <boost/regex.hpp>
+#include <ndn-cxx/management/nfd-face-query-filter.hpp>
+#include <ndn-cxx/util/segment-fetcher.hpp>
+#include <ndn-cxx/management/nfd-face-status.hpp>
+#include <memory>
+#include <ndn-cxx/util/time.hpp>
+
+
+
+namespace nfd{
+	class Forwarder;
+	class Nfd;
+}
 
 namespace nfd{
 	namespace gateway{
@@ -21,17 +39,87 @@ namespace nfd{
 	using ndn::InterestFilter;
 	using ndn::Interest; 
 	using ndn::Name;
-
+	using namespace ndn::nfd;
 	
 	
 	class serial_manager;
 	
 	class Nwd{
 	public:
-		Nwd();
+		Nwd(nfd::Nfd &);
 		
 		void
  		initialize();
+
+		class Error : public std::runtime_error
+ 	    {
+  			public:
+   		   		 explicit
+   				 Error(const std::string& what)
+      				: std::runtime_error(what)
+    			{
+    			}
+ 		 };
+
+		class FaceIdFetcher
+		{
+			
+			public:
+				typedef std::function<void(uint32_t)> SuccessCallback;
+   				typedef std::function<void(const std::string&)> FailureCallback;
+
+				static void
+    			start(ndn::Face& face, ndn::nfd::Controller& controller,const std::string& input,bool allowCreate,
+          			const SuccessCallback& onSucceed,const FailureCallback& onFail);
+				
+			private:
+				FaceIdFetcher(ndn::Face& face,ndn::nfd::Controller& controller,bool allowCreate,
+                  const SuccessCallback& onSucceed,const FailureCallback& onFail);
+				
+				void
+    			startGetFaceId(const ndn::util::FaceUri& faceUri);
+
+				void
+    			onCanonizeSuccess(const ndn::util::FaceUri& canonicalUri);
+
+				void
+  			    onCanonizeFailure(const std::string& reason);
+
+				void
+   			    onQuerySuccess(const ndn::ConstBufferPtr& data,const ndn::util::FaceUri& canonicalUri);
+
+				void
+    			onQueryFailure(uint32_t errorCode,const ndn::util::FaceUri& canonicalUri);
+
+				void
+   			    fail(const std::string& reason);
+
+				void
+    			succeed(uint32_t faceId);
+
+				void
+   			    startFaceCreate(const ndn::util::FaceUri& canonicalUri);
+
+				void
+    			onFaceCreateError(uint32_t code,const std::string& error,const std::string& message);
+				
+    			ndn::Face& m_face;
+    			ndn::nfd::Controller& m_controller;
+    			bool m_allowCreate;
+    			SuccessCallback m_onSucceed;
+    			FailureCallback m_onFail;
+    			ndn::ValidatorNull m_validator;
+		};
+	public:
+		static const ndn::time::milliseconds DEFAULT_EXPIRATION_PERIOD;
+		static const uint64_t DEFAULT_COST;
+		uint64_t m_flags;
+ 		uint64_t m_cost;
+  		uint64_t m_faceId;
+   		uint64_t m_origin;
+		ndn::time::milliseconds m_expires;
+	    FacePersistency m_facePersistency;
+		
 	private:
 		void
   		onInterest(const InterestFilter& filter, const Interest& interest);
@@ -41,6 +129,9 @@ namespace nfd{
 
 		void
 		Location_onInterest(const InterestFilter& filter, const Interest& interest);
+
+		void
+		Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest);
 	
 
 		void
@@ -72,9 +163,22 @@ namespace nfd{
 
 		bool 
   		search_dataset_type(std::string In_Name,WsnData dataval);
+
+		void
+  		ribRegisterPrefix();
+
+		void
+  		onSuccess(const ControlParameters& commandSuccessResult,const std::string& message);
+
+		void
+ 	    onError(uint32_t code, const std::string& error, const std::string& message);
+
+		void
+  		onObtainFaceIdFailure(const std::string& message);
 		
 		ndn::Face m_face;
 		ndn::KeyChain m_keyChain;
+		ndn::nfd::Controller m_controller;
 		serial_manager m_serialManager;
 		boost::thread_group threadGroup;
 		std::map<std::string,std::set<std::string>> interest_list;
@@ -89,6 +193,10 @@ namespace nfd{
 		std::set<WsnData> data_set;
 		std::set<std::string> topo_data;
 		std::map<std::string,std::string> location_map;
+		std::shared_ptr<Forwarder> m_forwarder;
+		std::string remote_name;
+		std::string face_name;
+		
 	};
 
 	}

@@ -368,6 +368,9 @@ Nfdc::ribRegisterPrefix()
   m_name = m_commandLineArguments[0];
   const std::string& faceName = m_commandLineArguments[1];
 
+  std::cout<<m_name<<std::endl;
+  std::cout<<faceName<<std::endl;
+
   FaceIdFetcher::start(m_face, m_controller, faceName, true,
                        [this] (const uint32_t faceId) {
                          ControlParameters parameters;
