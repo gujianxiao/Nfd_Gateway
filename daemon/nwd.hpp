@@ -24,6 +24,7 @@
 #include <ndn-cxx/management/nfd-face-status.hpp>
 #include <memory>
 #include <ndn-cxx/util/time.hpp>
+#include <climits>
 
 
 
@@ -136,6 +137,9 @@ namespace nfd{
 
 		void
   		onRegisterFailed(const Name& prefix, const std::string& reason);
+
+		void
+		Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest);
 
 		void 
 		listen_wsn_data(serial_manager *sm);

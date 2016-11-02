@@ -40,6 +40,11 @@ namespace nfd {
 									 bind(&Nwd::Wifi_Register_onInterest, this, _1, _2),
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+		m_face.setInterestFilter("/wsn/range",
+									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 		
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
@@ -53,6 +58,46 @@ namespace nfd {
         threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
     	m_face.processEvents();
 		
+	}
+
+	void
+	Nwd::Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest)
+	{
+		std::cout << "<< I: " << interest << std::endl;
+		std::string interest_name = interest.getName().toUri();
+		int max_x=0,max_y=0,min_x=INT_MAX,min_y=INT_MAX;
+		for(auto& itr:location_map){
+//			std::cout<<itr.second<<std::endl;
+			std::string::size_type x_start=itr.second.find("(");
+			std::string::size_type x_end=itr.second.find(",");
+			std::string::size_type y_start=x_end;
+			std::string::size_type y_end= itr.second.find(")");
+			std::string x=itr.second.substr(x_start+1,x_end-x_start-1);
+			std::string y=itr.second.substr(y_start+1,y_end-y_start-1);
+			std::cout<<x<<","<<y<<std::endl;
+			int x_int=std::stoi(x);
+			int y_int=std::stoi(y);
+			if(x_int<min_x)
+				min_x=x_int;
+			if(x_int>max_x)
+				max_x=x_int;
+			if(y_int<min_y)
+				min_y=y_int;
+			if(y_int>max_y)
+				max_y=y_int;
+		}
+			
+		Name dataName(interest_name);
+	  	std::string data_val("("+std::to_string(min_x)+","+std::to_string(max_y)+")/("+
+			std::to_string(max_x)+","+std::to_string(min_y)+")");
+	  	shared_ptr<Data> data = make_shared<Data>();
+     	data->setName(dataName);
+      	data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()), data_val.size());
+	  	m_keyChain.sign(*data);
+	
+	    std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);	
 	}
 
 	void
@@ -203,6 +248,8 @@ namespace nfd {
 		if(interest_name.find("topo") != std::string::npos)
 			return ;
 		if(interest_name.find("location") != std::string::npos)
+			return ;
+		if(interest_name.find("range") != std::string::npos)
 			return ;
 		std::cout << "<< I: " << interest << std::endl;
 		
