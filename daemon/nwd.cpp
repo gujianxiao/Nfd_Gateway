@@ -11,7 +11,7 @@ namespace nfd {
 		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
-		m_tsync(m_face.getIoService()),local_timestamp(0),m_forwarder(nfd.get_Forwarder())
+		m_tsync(m_face.getIoService()),local_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0)
 	{
 //		io.run();
 	}
@@ -41,7 +41,7 @@ namespace nfd {
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 
-		m_face.setInterestFilter("/wsn/range",
+		m_face.setInterestFilter("/localhost/wsn/range",
 									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
@@ -85,11 +85,12 @@ namespace nfd {
 				min_y=y_int;
 			if(y_int>max_y)
 				max_y=y_int;
+		
 		}
-			
+		wsn_nodes=location_map.size();
 		Name dataName(interest_name);
 	  	std::string data_val("("+std::to_string(min_x)+","+std::to_string(max_y)+")/("+
-			std::to_string(max_x)+","+std::to_string(min_y)+")");
+			std::to_string(max_x)+","+std::to_string(min_y)+") "+to_string(wsn_nodes)+"$");
 	  	shared_ptr<Data> data = make_shared<Data>();
      	data->setName(dataName);
       	data->setFreshnessPeriod(time::seconds(10));

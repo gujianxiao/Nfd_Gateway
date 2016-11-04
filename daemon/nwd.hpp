@@ -200,6 +200,7 @@ namespace nfd{
 		std::shared_ptr<Forwarder> m_forwarder;
 		std::string remote_name;
 		std::string face_name;
+		int wsn_nodes;
 		
 	};
 

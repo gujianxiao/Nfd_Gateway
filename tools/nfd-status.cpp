@@ -834,7 +834,7 @@ private:
   {
     if (m_fetchSteps.empty())
       return;
-
+    std::cout<<"in runNextStep"<<std::endl;
     function<void()> nextStep = m_fetchSteps.front();
     m_fetchSteps.pop_front();
     nextStep();
