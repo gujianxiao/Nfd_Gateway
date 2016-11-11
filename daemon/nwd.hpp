@@ -25,6 +25,7 @@
 #include <memory>
 #include <ndn-cxx/util/time.hpp>
 #include <climits>
+#include <ctime>
 
 
 
@@ -194,6 +195,7 @@ namespace nfd{
 		boost::asio::steady_timer m_t;
 		boost::asio::steady_timer m_tsync; //for time sync
 		int local_timestamp;
+		time_t globe_timestamp;
 		std::set<WsnData> data_set;
 		std::set<std::string> topo_data;
 		std::map<std::string,std::string> location_map;

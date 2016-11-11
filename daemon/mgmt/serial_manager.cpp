@@ -31,7 +31,7 @@
 namespace nfd {
     namespace gateway {
         serial_manager::serial_manager(boost::condition_variable_any& m_data_ready) : datagotflag(0), total_read(0), top(0), bottom(0), data_flag(0),
-                                           thread_flag(1),data_ready(m_data_ready){
+                                           thread_flag(1),data_ready(m_data_ready),globe_timestamp(0){
             try {
                 fdusb = open(USB_PATH_PORT, O_RDWR);
                 if (fdusb == -1) {
@@ -203,9 +203,9 @@ namespace nfd {
                         char content_tmp[16];
                         sprintf(content_tmp, "%hd", content);
                         std::string key;
-                        sprintf(name_buf, "/%hd,%hd/%hd/",
+                        sprintf(name_buf, "/%hd,%hd/%d/",
                                 recv_data->msgName.ability.leftUp.x, recv_data->msgName.ability.leftUp.y,
-                                recv_data->msgName.time_period.start_time);
+                                recv_data->msgName.time_period.start_time+(int)globe_timestamp);
                         if (recv_data->msgName.dataType == Light) {
                             strcat(name_buf, "light");
                             key = "light";
@@ -230,10 +230,11 @@ namespace nfd {
 						for(auto& itr:In_List){
 							if(position_belong_interest(itr.first,recv_data->msgName.ability.leftUp.x,
 								recv_data->msgName.ability.leftUp.y)){
-								if(time_belong_interest(itr.first,recv_data->msgName.time_period.start_time)){
+								if(time_belong_interest(itr.first,recv_data->msgName.time_period.start_time+(int)globe_timestamp)){
 									if(datatype_equal_interest(itr.first,key)){
 //										std::cout<<"match"<<std::endl;
 										itr.second.insert(data_ret);
+										std::cout<<"data insert"<<std::endl;
 									}
 								}	
 							}	
@@ -355,8 +356,18 @@ namespace nfd {
                 name->ability.leftUp.y = atoi(arg[1]);
                 name->ability.rightDown.x = atoi(arg[2]);
                 name->ability.rightDown.y = atoi(arg[3]);
-                name->time_period.start_time = atoi(arg[4]);
-                name->time_period.end_time = atoi(arg[5]);
+				std::cout<<arg[4]<<" "<<arg[5]<<std::endl;
+				std::cout<<"golbe time:"<<globe_timestamp<<std::endl;
+				if(atoi(arg[4])>=globe_timestamp  && atoi(arg[5]) >=globe_timestamp){
+                	name->time_period.start_time = atoi(arg[4])-(int)globe_timestamp; //transfor local telosb time
+               	    name->time_period.end_time = atoi(arg[5])-(int)globe_timestamp;
+				}else{
+					name->time_period.start_time=0;
+					name->time_period.end_time=0;
+				}
+//				if(name->time_period.start_time <0 || name->time_period.end_time <0)
+//					return 0;
+				
                 if (!strcmp(arg[6], "light"))
                     name->dataType = Light;
                 if (!strcmp(arg[6], "temp"))
@@ -718,6 +729,7 @@ namespace nfd {
             memset(name, 0, sizeof(interest_name));
             name->time_period.start_time = local_timestamp;
             name->time_period.end_time = local_timestamp;
+			std::time(&globe_timestamp);
             //\u5c01\u88c5tinyOS\u6570\u636e\u5305\uff0c\u901a\u8fc7\u4e32\u53e3\u5c06Interest\u53d1\u9001\u7ed9\u4e0b\u6e38\u4f20\u611f\u5668
             usb_write(name, TIME);
             free(name);

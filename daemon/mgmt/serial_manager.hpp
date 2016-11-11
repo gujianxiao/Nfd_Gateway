@@ -10,6 +10,7 @@
 #include <semaphore.h>
 #include <boost/thread.hpp>
 #include <boost/thread/lock_factories.hpp>
+#include <ctime>
 
 
 //#define SHORTEST_DATA_FRAME_LEN 25
@@ -198,6 +199,8 @@ namespace nfd {
 			boost::condition_variable_any& data_ready;
 
             int g_count;
+
+			time_t globe_timestamp;
         };
     }
 }

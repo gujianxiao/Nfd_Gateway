@@ -11,7 +11,7 @@ namespace nfd {
 		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
-		m_tsync(m_face.getIoService()),local_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0)
+		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0)
 	{
 //		io.run();
 	}
@@ -184,8 +184,12 @@ namespace nfd {
 
 	void
 	Nwd::time_sync(){
-		if(local_timestamp % (3*3600) ==0)
+		if(local_timestamp % (3*3600) ==0){
 			m_serialManager.sync_time(local_timestamp);
+			std::time(&globe_timestamp);
+		}
+		
+//		std::cout<<"time:"<<globe_timestamp<<std::endl;
 		++local_timestamp;
 		m_tsync.expires_from_now(std::chrono::seconds(1));//set 1s timer
 		m_tsync.async_wait(boost::bind(&Nwd::time_sync,this));
@@ -260,11 +264,31 @@ namespace nfd {
             pos += 1;
         }
 		interest_name.replace(0, 1, "");
+//		std::string interest_copy=interest_name;
 		interest_list.insert(std::make_pair(interest_name,std::set<std::string>()));
+		
+//		std::string::size_type time_end_pos=interest_name.rfind("/");
+//		std::string::size_type time_mid_pos=interest_name.rfind("/",time_end_pos-1);
+//		std::string::size_type time_start_pos=interest_name.rfind("/",time_mid_pos-1);
+//		int endtime=std::stoi(interest_name.substr(time_mid_pos+1,time_end_pos-time_mid_pos-1));
+//		int starttime=std::stoi(interest_name.substr(time_start_pos+1,time_mid_pos-time_start_pos-1));
+//	
+//		starttime-=globe_timestamp;
+//		endtime-=globe_timestamp;
+//		std::cout<<"start:"<<starttime<<std::endl;
+//		std::cout<<"end:"<<endtime<<std::endl;
+//		if(starttime>=0 && endtime>=0){
+//			interest_name.replace(time_start_pos+1,time_end_pos-time_start_pos-1,std::to_string(starttime)+"/"+to_string(endtime));
+//			interest_name.replace(time_mid_pos+1,time_end_pos-time_mid_pos-1,std::to_string(endtime));
+//		}else
+//			return;
+		std::cout<<interest_name<<std::endl;
+		
+		
 		char tmp[1024];
         strcpy(tmp, interest_name.c_str());
 
-		if(m_serialManager.time_belong_interest(interest_name,local_timestamp)){			
+		if(m_serialManager.time_belong_interest(interest_name,globe_timestamp+local_timestamp)){			
 			m_serialManager.handle_interest(tmp); 
 			m_t.expires_from_now(std::chrono::milliseconds(400));//set 400ms timer
 			m_t.async_wait(boost::bind(&Nwd::wait_data,this));
