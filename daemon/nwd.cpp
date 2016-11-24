@@ -11,7 +11,8 @@ namespace nfd {
 		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
-		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0)
+		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0),
+		handle_interest_busy(false)
 	{
 //		io.run();
 	}
@@ -40,6 +41,13 @@ namespace nfd {
 									 bind(&Nwd::Wifi_Register_onInterest, this, _1, _2),
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+		
+//		m_face.setInterestFilter("/wifi/",
+//									 bind(&Nwd::Wifi_onInterest, this, _1, _2),
+//									 ndn::RegisterPrefixSuccessCallback(),
+//									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+		
 
 		m_face.setInterestFilter("/localhost/wsn/range",
 									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
@@ -49,9 +57,8 @@ namespace nfd {
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
 		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
-
-		m_tsync.expires_from_now(std::chrono::seconds(80));
-		m_tsync.async_wait(boost::bind(&Nwd::time_sync,this));
+		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this));
+		
 //		std::cout<<"data_set max_size is"<<data_set.max_size()<<std::endl;
 		
 //		threadGroup.create_thread(boost::bind(&Nwd::io_service_run,this));
@@ -59,6 +66,14 @@ namespace nfd {
     	m_face.processEvents();
 		
 	}
+
+//	void
+//	Nwd::Wifi_onInterest(const InterestFilter& filter, const Interest& interest)
+//	{
+//		std::cout << "<< I: " << interest << std::endl;
+//		std::string interest_name = interest.getName().toUri();
+//		
+//	}
 
 	void
 	Nwd::Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest)
@@ -110,6 +125,7 @@ namespace nfd {
 		face_name=interest_name;
 		face_name.erase(5,9);
 		std::cout<<face_name<<std::endl;
+		wifi_user_id.push_back(face_name);
 		auto pit_entry_itr=m_forwarder->getPit().begin();
 //		++pit_entry_itr;
 		for(;pit_entry_itr!=m_forwarder->getPit().end();pit_entry_itr++){
@@ -127,10 +143,15 @@ namespace nfd {
 					std::string::size_type pos=remote_name.rfind(":");
 					remote_name.erase(pos);
 					std::cout<<remote_name<<std::endl;
-					ribRegisterPrefix();
+//					std::cout<<"face name:"<<face_name<<std::endl;
+//					ribRegisterPrefix();
+					
+					
 				}
 			}
 		}
+//		boost::this_thread::sleep(boost::posix_time::seconds(2)); 
+		
 
 		Name dataName(interest_name);
 	  	std::string data_val("success");
@@ -142,6 +163,10 @@ namespace nfd {
 	
 	    std::cout << ">> D: " << *data << std::endl;
         m_face.put(*data);
+
+		face_name="/wifi";
+		std::cout<<"face name:"<<face_name<<std::endl;
+		ribRegisterPrefix();
 
 //		nfd::FaceTable& faceTable = m_forwarder->getFaceTable();
 //		for(auto itr=faceTable.begin();itr!=faceTable.end();itr++){
@@ -183,14 +208,23 @@ namespace nfd {
 	}
 
 	void
+	Nwd::time_sync_init(){
+		m_tsync.expires_from_now(std::chrono::seconds(70));
+		m_tsync.async_wait(boost::bind(&Nwd::time_sync,this));
+	}
+
+	void
 	Nwd::time_sync(){
-		if(local_timestamp % (3*3600) ==0){
+		if(local_timestamp % (3000) ==0){
+			local_timestamp=0;
 			m_serialManager.sync_time(local_timestamp);
 			std::time(&globe_timestamp);
 		}
 		
-//		std::cout<<"time:"<<globe_timestamp<<std::endl;
+//		
 		++local_timestamp;
+//		std::cout<<"time sync:"<<globe_timestamp+local_timestamp<<std::endl;
+
 		m_tsync.expires_from_now(std::chrono::seconds(1));//set 1s timer
 		m_tsync.async_wait(boost::bind(&Nwd::time_sync,this));
 	}
@@ -226,9 +260,10 @@ namespace nfd {
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
 		std::string data_val;	
-		std::cout<<"before"<<std::endl;
+//		std::cout<<"before"<<std::endl;
 		for(auto & itr:topo_data){
 			data_val+=itr;
+			std::cout<<itr<<std::endl;
 			data_val+="$$";
 		}
 		Name dataName(interest_name);
@@ -282,16 +317,29 @@ namespace nfd {
 //			interest_name.replace(time_mid_pos+1,time_end_pos-time_mid_pos-1,std::to_string(endtime));
 //		}else
 //			return;
+		receive_in_queue.push(interest_name);
 		std::cout<<interest_name<<std::endl;
 		
 		
-		char tmp[1024];
-        strcpy(tmp, interest_name.c_str());
-
-		if(m_serialManager.time_belong_interest(interest_name,globe_timestamp+local_timestamp)){			
-			m_serialManager.handle_interest(tmp); 
-			m_t.expires_from_now(std::chrono::milliseconds(400));//set 400ms timer
-			m_t.async_wait(boost::bind(&Nwd::wait_data,this));
+		std::time(&globe_timestamp);
+		std::cout<<"time:"<<globe_timestamp<<std::endl;
+		if(m_serialManager.time_belong_interest(interest_name,globe_timestamp)){			
+			if(handle_interest_busy==false){
+				handle_interest_busy=true;
+				while(!receive_in_queue.empty()){
+					std::string recv_in=receive_in_queue.front();
+				
+					char tmp[1024];
+        			strcpy(tmp, recv_in.c_str());
+					m_serialManager.handle_interest(tmp);
+					receive_in_queue.pop();
+					boost::this_thread::sleep(boost::posix_time::milliseconds(500));
+				}
+				handle_interest_busy=false;
+				m_t.expires_from_now(std::chrono::milliseconds(1600));//set 400ms timer
+				
+				m_t.async_wait(boost::bind(&Nwd::wait_data,this));
+			}
 		}else{
 			search_dataset(interest_name);
 		}
@@ -400,16 +448,16 @@ namespace nfd {
 
   void 
   Nwd::wait_data(){
-		
+		std::cout<<"in wait data"<<std::endl;
 		for(auto &itr:interest_list){
 		    std::string data_ret;
 		    std::string In_Name;
 			In_Name=itr.first;
 			for(auto &data:itr.second){
 //				std::cout<<data<<std::endl;
-				data_ret+=data;
-				data_set.insert(WsnData(data,local_timestamp)); //put in data_set
-				data_ret+="$$";
+//				data_ret+=data;
+				data_set.insert(WsnData(data,local_timestamp+globe_timestamp)); //put in data_set
+//				data_ret+="$$";
 			}
 			search_dataset(In_Name);
 //			if(!data_ret.empty()){
@@ -451,7 +499,7 @@ namespace nfd {
   void
   Nwd::onSuccess(const ControlParameters& commandSuccessResult, const std::string& message)
   {
-	 std::cout<<"in onsuccess"<<std::endl;
+	 
 	 std::cout << message << ": " << commandSuccessResult << std::endl;
   }
 

@@ -680,6 +680,7 @@ namespace nfd {
             uint8_t topo_rebuild_flag = 0;
 //			char topo_tmp[64]={'\0'};
 			std::string topo_tmp;
+			std::ostringstream topo_data;
 			
             while (thread_flag) {
                 //\u7b49\u5f85\u91cd\u5efa\u4fe1\u53f7\u5230\u6765
@@ -699,17 +700,23 @@ namespace nfd {
                     }
 					else{
 //                    	printf("%d -> ", topo->data[i]);
-						sprintf(tmp,"%d->",topo->data[i]);
+						sprintf(tmp,"%d",topo->data[i]);
 					}
-					topo_tmp+=tmp;
 					
+					if(i>=1){
+						topo_data<<topo_tmp<<"->"<<tmp;
+						std::cout<<topo_data.str()<<std::endl;
+						topo_dataset.insert(topo_data.str());
+						topo_data.str("");
+					}
+					topo_tmp=tmp;
 //					topo_data+=topo_tmp;
 					
                 }
 	           
-				std::cout<<topo_tmp<<std::endl;
-				topo_dataset.insert(topo_tmp);
-				topo_tmp.clear();
+//				std::cout<<topo_tmp<<std::endl;
+//				topo_dataset.insert(topo_tmp);
+//				topo_tmp.clear();
 //				printf("%s\n",topo_tmp.data());
 //                topo_tree_recycling();
                 topo_tree_build(&topo_head, topo->data, topo->num - 1, &topo_rebuild_flag);

@@ -26,6 +26,7 @@
 #include <ndn-cxx/util/time.hpp>
 #include <climits>
 #include <ctime>
+#include <queue>
 
 
 
@@ -155,6 +156,9 @@ namespace nfd{
 		wait_data();
 
 		void
+		time_sync_init();
+		
+		void
 		time_sync();
 
 		void 
@@ -203,6 +207,9 @@ namespace nfd{
 		std::string remote_name;
 		std::string face_name;
 		int wsn_nodes;
+		bool handle_interest_busy;
+		std::vector<std::string> wifi_user_id;
+		std::queue<std::string> receive_in_queue;
 		
 	};
 
