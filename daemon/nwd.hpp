@@ -177,6 +177,9 @@ namespace nfd{
   		ribRegisterPrefix();
 
 		void
+		strategyChoiceSet(std::string name,std::string strategy);
+
+		void
   		onSuccess(const ControlParameters& commandSuccessResult,const std::string& message);
 
 		void

@@ -485,6 +485,7 @@ Nfdc::strategyChoiceSet()
   const std::string& name = m_commandLineArguments[0];
   const std::string& strategy = m_commandLineArguments[1];
 
+
   ControlParameters parameters;
   parameters
     .setName(name)

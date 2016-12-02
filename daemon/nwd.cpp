@@ -58,7 +58,7 @@ namespace nfd {
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
 		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
 		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this));
-		
+
 //		std::cout<<"data_set max_size is"<<data_set.max_size()<<std::endl;
 		
 //		threadGroup.create_thread(boost::bind(&Nwd::io_service_run,this));
@@ -121,7 +121,7 @@ namespace nfd {
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
-		
+
 		face_name=interest_name;
 		face_name.erase(5,9);
 		std::cout<<face_name<<std::endl;
@@ -167,6 +167,7 @@ namespace nfd {
 		face_name="/wifi";
 		std::cout<<"face name:"<<face_name<<std::endl;
 		ribRegisterPrefix();
+        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
 
 //		nfd::FaceTable& faceTable = m_forwarder->getFaceTable();
 //		for(auto itr=faceTable.begin();itr!=faceTable.end();itr++){
@@ -177,7 +178,27 @@ namespace nfd {
 //		}
 //		m_forwarder->getFaceTable();
 
-	}		
+	}
+
+    void
+    Nwd::strategyChoiceSet(std::string name,std::string strategy)
+    {
+
+
+        ControlParameters parameters;
+        parameters
+                .setName(name)
+                .setStrategy(strategy);
+
+        m_controller.start<StrategyChoiceSetCommand>(parameters,
+                                                     bind(&Nwd::onSuccess, this, _1,
+                                                          "Successfully set strategy choice"),
+                                                     bind(&Nwd::onError, this, _1, _2,
+                                                          "Failed to set strategy choice"));
+        std::cout<<"strategyset: "<<name<<" "<<strategy<<std::endl;
+    }
+
+
 
 	void
 	Nwd::ribRegisterPrefix()
