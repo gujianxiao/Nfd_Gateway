@@ -1,3 +1,0 @@
-/home/youngwb/NFD_Master/NFD-master/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/youngwb/NFD_Master/NFD-master/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/youngwb/NFD_Master/NFD-master/cmake-build-debug/CMakeFiles/NFD_master.dir
