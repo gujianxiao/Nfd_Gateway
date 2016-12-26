@@ -37,6 +37,13 @@
 #include "table/strategy-choice.hpp"
 #include "table/dead-nonce-list.hpp"
 #include "table/network-region-table.hpp"
+#include "../../common.hpp"
+#include "../../../ndn-cxx-master/src/data.hpp"
+#include "../../../ndn-cxx-master/src/lp/nack.hpp"
+
+#include <boost/asio.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <ndn-cxx/face.hpp>  //add by ywb
 
 namespace nfd {
 
@@ -184,6 +191,10 @@ PUBLIC_WITH_TESTS_ELSE_PRIVATE: // pipelines
   VIRTUAL_WITH_TESTS void
   onOutgoingData(const Data& data, Face& outFace);
 
+  //add by ywb
+  void
+  onOutgoingSendData(const Data &data, Face &outFace);
+
   /** \brief incoming Nack pipeline
    */
   VIRTUAL_WITH_TESTS void
@@ -238,6 +249,11 @@ private:
   StrategyChoice     m_strategyChoice;
   DeadNonceList      m_deadNonceList;
   NetworkRegionTable m_networkRegionTable;
+
+  std::vector<Data> data_vec;
+  ndn::Face m_face;
+  boost::asio::steady_timer m_t; //add by ywb
+
 
   // allow Strategy (base class) to enter pipelines
   friend class fw::Strategy;

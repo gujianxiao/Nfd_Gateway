@@ -30,6 +30,7 @@
 #include "core/privilege-helper.hpp"
 #include "core/config-file.hpp"
 #include "fw/forwarder.hpp"
+#include "fw/location-route-strategy.hpp"  //add by ywb
 #include "face/null-face.hpp"
 #include "face/internal-face.hpp"
 #include "mgmt/fib-manager.hpp"
@@ -174,6 +175,10 @@ Nfd::initializeManagement()
 
   ConfigFile config(&ignoreRibAndLogSections);
   general::setConfigFile(config);
+
+//
+
+
 
   TablesConfigSection tablesConfig(m_forwarder->getCs(),
                                    m_forwarder->getPit(),

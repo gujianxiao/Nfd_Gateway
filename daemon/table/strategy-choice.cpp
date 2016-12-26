@@ -64,7 +64,7 @@ StrategyChoice::install(shared_ptr<Strategy> strategy)
     NFD_LOG_ERROR("install(" << strategyName << ") duplicate strategyName");
     return false;
   }
-
+  NFD_LOG_INFO("install("<<strategyName<<") success");
   m_strategyInstances[strategyName] = strategy;
   return true;
 }

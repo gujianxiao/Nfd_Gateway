@@ -28,6 +28,8 @@
 
 #include "strategy.hpp"
 
+
+
 namespace nfd {
 namespace fw {
 
@@ -42,13 +44,13 @@ namespace fw {
  *              which allows consumer retransmissions. This version is kept for
  *              comparison purposes and is not recommended for general usage.
  */
-class WsnRouteStrategy : public Strategy
+class LocationRouteStrategy : public Strategy
 {
 public:
-  WsnRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
+  LocationRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
 
   virtual
-  ~WsnRouteStrategy();
+  ~LocationRouteStrategy();
 
   virtual void
   afterReceiveInterest(const Face& inFace,
@@ -58,6 +60,7 @@ public:
 
 public:
   static const Name STRATEGY_NAME;
+
 };
 
 } // namespace fw

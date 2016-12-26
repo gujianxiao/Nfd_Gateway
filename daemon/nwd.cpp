@@ -1,9 +1,13 @@
 #include "nwd.hpp"
 #include "wsn-data.hpp"
+#include "../../../../../usr/include/c++/4.8/ostream"
+#include "../../../../../usr/include/c++/4.8/iostream"
+#include "../../../../../usr/include/c++/4.8/string"
+#include "../../../../../usr/include/boost/algorithm/string.hpp"
 
 namespace nfd {
 	namespace gateway{
-
+	NFD_LOG_INIT("Nwd");
 	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
 	const uint64_t Nwd::DEFAULT_COST = 0;
 		
@@ -20,7 +24,10 @@ namespace nfd {
 	void
 	Nwd::initialize()
 	{
-		
+
+//		auto ret=m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder));
+//		std::cout<<"+++++++++++++++++++++++ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111  "<<ret<<std::endl;
+
 		m_face.setInterestFilter("/wsn/topo",
                              bind(&Nwd::Topo_onInterest, this, _1, _2),
                              ndn::RegisterPrefixSuccessCallback(),
@@ -195,7 +202,7 @@ namespace nfd {
                                                           "Successfully set strategy choice"),
                                                      bind(&Nwd::onError, this, _1, _2,
                                                           "Failed to set strategy choice"));
-        std::cout<<"strategyset: "<<name<<" "<<strategy<<std::endl;
+        std::cout<<"strategyset: "<<name<<" ";
     }
 
 
@@ -398,12 +405,13 @@ namespace nfd {
 		return true;
 	}
 	return false;
+
   }
 	
   bool
   Nwd::search_dataset_time(std::string In_Name,WsnData dataval){
-	std::string::size_type in_time_beg,in_time_mid,in_time_end;
-	in_time_end=In_Name.rfind('/');
+    std::string::size_type in_time_beg,in_time_mid,in_time_end;
+    in_time_end=In_Name.rfind('/');
 	in_time_mid=In_Name.rfind('/',in_time_end-1);
 	in_time_beg=In_Name.rfind('/',in_time_mid-1);
 	int In_Start_Time=std::stoi(In_Name.substr(in_time_beg+1,in_time_mid-in_time_beg-1));
@@ -415,6 +423,8 @@ namespace nfd {
 		return true;
 	}
 	return false;
+
+
   }
 
   bool 
@@ -458,6 +468,8 @@ namespace nfd {
               << prefix << "\" in local hub's daemon (" << reason << ")"
               << std::endl;
     m_face.shutdown();
+
+
   }
 
   void 

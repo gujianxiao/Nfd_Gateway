@@ -28,6 +28,7 @@
 #include "core/logger.hpp"
 #include "core/random.hpp"
 #include "strategy.hpp"
+#include "../../../ndn-cxx-master/src/data.hpp"
 #include <boost/random/uniform_int_distribution.hpp>
 
 namespace nfd {
@@ -42,6 +43,7 @@ Forwarder::Forwarder()
   , m_pit(m_nameTree)
   , m_measurements(m_nameTree)
   , m_strategyChoice(m_nameTree, fw::makeDefaultStrategy(*this))
+  , m_t(m_face.getIoService())
 {
   fw::installStrategies(*this);
 }
@@ -371,6 +373,10 @@ Forwarder::onIncomingData(Face& inFace, const Data& data)
 {
   // receive Data
   NFD_LOG_DEBUG("onIncomingData face=" << inFace.getId() << " data=" << data.getName());
+//  std::cout<<"data Content:"<<data.getContent().value()<<std::endl;
+//  m_t.expires_from_now(std::chrono::milliseconds(10));
+//  m_t.async_wait([&](const boost::system::error_code& ec){
+
   data.setTag(make_shared<lp::IncomingFaceIdTag>(inFace.getId()));
   ++m_counters.nInData;
 
@@ -388,6 +394,7 @@ Forwarder::onIncomingData(Face& inFace, const Data& data)
   pit::DataMatchResult pitMatches = m_pit.findAllDataMatches(data);
   if (pitMatches.begin() == pitMatches.end()) {
     // goto Data unsolicited pipeline
+//    NFD_LOG_INFO("pitmatch data NOT match :"<<inFace.getId() << " data=" << data.getName());
     this->onDataUnsolicited(inFace, data);
     return;
   }
@@ -408,6 +415,7 @@ Forwarder::onIncomingData(Face& inFace, const Data& data)
     for (const pit::InRecord& inRecord : pitEntry->getInRecords()) {
       if (inRecord.getExpiry() > now) {
         pendingDownstreams.insert(inRecord.getFace().get());
+//        NFD_LOG_INFO("pendingDownstreams insert inRecord ");
       }
     }
 
@@ -434,6 +442,7 @@ Forwarder::onIncomingData(Face& inFace, const Data& data)
     // goto outgoing Data pipeline
     this->onOutgoingData(data, *pendingDownstream);
   }
+//});
 }
 
 void
@@ -475,6 +484,14 @@ Forwarder::onOutgoingData(const Data& data, Face& outFace)
   // send Data
   outFace.sendData(data);
   ++m_counters.nOutData;
+//  m_t.expires_from_now(std::chrono::milliseconds(0));
+//  m_t.async_wait(bind(&Forwarder::onOutgoingSendData,this,std::ref(data),std::ref(outFace)));
+}
+
+void  //no use
+Forwarder::onOutgoingSendData(const Data &data, Face &outFace)
+{
+
 }
 
 void
@@ -607,7 +624,7 @@ void
 Forwarder::setStragglerTimer(shared_ptr<pit::Entry> pitEntry, bool isSatisfied,
                              const time::milliseconds& dataFreshnessPeriod)
 {
-  time::nanoseconds stragglerTime = time::milliseconds(100);
+  time::nanoseconds stragglerTime = time::milliseconds(2000);
 
   scheduler::cancel(pitEntry->m_stragglerTimer);
   pitEntry->m_stragglerTimer = scheduler::schedule(stragglerTime,

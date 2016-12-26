@@ -193,8 +193,10 @@ private:
    *
    *  Triggers can access forwarder indirectly via actions.
    */
-  Forwarder& m_forwarder;
+protected:
+  Forwarder& m_forwarder; //modified by ywb ,before is private
 
+private:
   MeasurementsAccessor m_measurements;
 };
 

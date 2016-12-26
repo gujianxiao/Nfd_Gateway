@@ -14,7 +14,11 @@
 #include <boost/bind.hpp>
 #include "wsn-data.hpp"
 #include "fw/forwarder.hpp"
+#include "fw/location-route-strategy.hpp"
 #include "nfd.hpp"
+#include "../../ndn-cxx-master/src/interest-filter.hpp"
+#include "../../ndn-cxx-master/src/encoding/nfd-constants.hpp"
+#include "../../../../../usr/include/c++/4.8/stdexcept"
 #include <ndn-cxx/management/nfd-controller.hpp>
 #include <ndn-cxx/security/validator-null.hpp>
 #include <ndn-cxx/util/face-uri.hpp>
@@ -31,6 +35,9 @@
 
 
 namespace nfd{
+    namespace fw{
+        class  LocationRouteStrategy;
+    }
 	class Forwarder;
 	class Nfd;
 }
@@ -122,6 +129,7 @@ namespace nfd{
    		uint64_t m_origin;
 		ndn::time::milliseconds m_expires;
 	    FacePersistency m_facePersistency;
+
 		
 	private:
 		void

@@ -38,6 +38,9 @@ class Face;
 namespace mgmt {
 class Dispatcher;
 } // namespace mgmt
+namespace fw{
+class LocationRouteStrategy;
+}
 } // namespace ndn
 
 namespace nfd {

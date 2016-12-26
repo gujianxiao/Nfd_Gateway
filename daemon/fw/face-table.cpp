@@ -90,8 +90,8 @@ FaceTable::addImpl(shared_ptr<Face> face, FaceId faceId)
   face->afterReceiveInterest.connect(bind(&Forwarder::startProcessInterest, &m_forwarder, ref(*face), _1));
   face->afterReceiveData.connect(bind(&Forwarder::startProcessData, &m_forwarder, ref(*face), _1));
   face->afterReceiveNack.connect(bind(&Forwarder::startProcessNack, &m_forwarder, ref(*face), _1));
-  connectFaceClosedSignal(*face, bind(&FaceTable::remove, this, face));
-
+//  connectFaceClosedSignal(*face, bind(&FaceTable::remove, this, face));
+// modified by ywb ,notlet remove facetable
   this->afterAdd(face);
 }
 
@@ -104,7 +104,7 @@ FaceTable::remove(shared_ptr<Face> face)
   m_faces.erase(faceId);
   face->setId(face::INVALID_FACEID);
 
-  NFD_LOG_INFO("Removed face id=" << faceId <<
+  NFD_LOG_INFO("NOT Removed face id=" << faceId <<
                " remote=" << face->getRemoteUri() <<
                " local=" << face->getLocalUri());
 

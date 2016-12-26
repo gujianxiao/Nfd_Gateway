@@ -54,6 +54,7 @@ template<typename S>
 void
 registerStrategy()
 {
+
   registerStrategyImpl(S::STRATEGY_NAME,
                        [] (Forwarder& forwarder) { return make_shared<S>(ref(forwarder)); });
 }
