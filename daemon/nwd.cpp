@@ -24,9 +24,8 @@ namespace nfd {
 	void
 	Nwd::initialize()
 	{
-
-//		auto ret=m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder));
-//		std::cout<<"+++++++++++++++++++++++ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111  "<<ret<<std::endl;
+		auto ret=m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
+		NFD_LOG_INFO("+++++++++++++++++++++++ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111  "<<ret);
 
 		m_face.setInterestFilter("/wsn/topo",
                              bind(&Nwd::Topo_onInterest, this, _1, _2),
@@ -49,18 +48,21 @@ namespace nfd {
 									 ndn::RegisterPrefixSuccessCallback(),
 									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 		
-//		m_face.setInterestFilter("/wifi/",
-//									 bind(&Nwd::Wifi_onInterest, this, _1, _2),
+		m_face.setInterestFilter("/wifi/location",
+									 bind(&Nwd::Wifi_Location_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+        m_face.setInterestFilter("/wifi/topo",
+                                 bind(&Nwd::Wifi_Topo_onInterest, this, _1, _2),
+                                 ndn::RegisterPrefixSuccessCallback(),
+                                 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+//		m_face.setInterestFilter("/localhost/wsn/range",
+//									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
 //									 ndn::RegisterPrefixSuccessCallback(),
 //									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 
-		
-
-		m_face.setInterestFilter("/localhost/wsn/range",
-									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
-		
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
 		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
@@ -82,13 +84,14 @@ namespace nfd {
 //		
 //	}
 
+    /*目前没有使用*/
 	void
 	Nwd::Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest)
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
 		int max_x=0,max_y=0,min_x=INT_MAX,min_y=INT_MAX;
-		for(auto& itr:location_map){
+		for(auto& itr:wsn_location_map){
 //			std::cout<<itr.second<<std::endl;
 			std::string::size_type x_start=itr.second.find("(");
 			std::string::size_type x_end=itr.second.find(",");
@@ -109,7 +112,7 @@ namespace nfd {
 				max_y=y_int;
 		
 		}
-		wsn_nodes=location_map.size();
+		wsn_nodes=wsn_location_map.size();
 		Name dataName(interest_name);
 	  	std::string data_val("("+std::to_string(min_x)+","+std::to_string(max_y)+")/("+
 			std::to_string(max_x)+","+std::to_string(min_y)+") "+to_string(wsn_nodes)+"$");
@@ -118,10 +121,73 @@ namespace nfd {
       	data->setFreshnessPeriod(time::seconds(10));
         data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()), data_val.size());
 	  	m_keyChain.sign(*data);
-	
+
 	    std::cout << ">> D: " << *data << std::endl;
-        m_face.put(*data);	
+        m_face.put(*data);
 	}
+
+    /*保存更新wifi用户id和地理位置  */
+    void
+    Nwd::wifi_update_id_location(std::string& str)
+    {
+        std::string::size_type slash=str.find('/',1);
+
+        std::string user_id=str.substr(1,slash-1);
+        std::string location=str.substr(slash+1);
+        slash=location.find('/');
+        location.replace(slash,1,",");
+        std::cout<<user_id<<","<<location<<std::endl;
+        wifi_location_map[user_id] = location;
+    }
+
+    void
+    Nwd::Wifi_Location_onInterest(const InterestFilter& filter, const Interest& interest)
+    {
+        std::cout << "<< I: " << interest << std::endl;
+        std::string interest_name = interest.getName().toUri();
+        std::string data_val;
+        for(auto& itr : wifi_location_map)
+        {
+            data_val.append(itr.first+"->(");
+            data_val.append(itr.second);
+            data_val.append(")$$");
+
+        }
+        std::cout<<data_val<<std::endl;
+        Name dataName(interest_name);
+
+        shared_ptr<Data> data = make_shared<Data>();
+        data->setName(dataName);
+        data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()), data_val.size());
+        m_keyChain.sign(*data);
+
+        std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);
+    }
+
+    void
+    Nwd::Wifi_Topo_onInterest(const InterestFilter& filter, const Interest& interest)
+    {
+        std::cout << "<< I: " << interest << std::endl;
+        std::string interest_name = interest.getName().toUri();
+        std::string data_val;
+        for(auto& itr : wifi_location_map)
+        {
+            data_val.append(itr.first+"->0$$");
+        }
+        std::cout<<data_val<<std::endl;
+        Name dataName(interest_name);
+
+        shared_ptr<Data> data = make_shared<Data>();
+        data->setName(dataName);
+        data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(data_val.c_str()), data_val.size());
+        m_keyChain.sign(*data);
+
+        std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);
+    }
 
 	void
 	Nwd::Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest)
@@ -129,10 +195,11 @@ namespace nfd {
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
 
-		face_name=interest_name;
-		face_name.erase(5,9);
-		std::cout<<face_name<<std::endl;
-		wifi_user_id.push_back(face_name);
+		std::string tmp=interest_name;
+		tmp.erase(0,14);
+		std::cout<<tmp<<std::endl;
+        wifi_update_id_location(tmp);
+
 		auto pit_entry_itr=m_forwarder->getPit().begin();
 //		++pit_entry_itr;
 		for(;pit_entry_itr!=m_forwarder->getPit().end();pit_entry_itr++){
@@ -171,10 +238,11 @@ namespace nfd {
 	    std::cout << ">> D: " << *data << std::endl;
         m_face.put(*data);
 
-		face_name="/wifi";
-		std::cout<<"face name:"<<face_name<<std::endl;
-		ribRegisterPrefix();
-        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
+        //广播发送
+//		face_name="/wifi";
+//		std::cout<<"face name:"<<face_name<<std::endl;
+//		ribRegisterPrefix();
+//        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
 
 //		nfd::FaceTable& faceTable = m_forwarder->getFaceTable();
 //		for(auto itr=faceTable.begin();itr!=faceTable.end();itr++){
@@ -263,7 +331,7 @@ namespace nfd {
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
 		std::string data_val;
-		for(auto& itr:location_map){
+		for(auto& itr:wsn_location_map){
 			data_val+=itr.first;
 			data_val+="->";
 			data_val+=itr.second;
@@ -475,7 +543,7 @@ namespace nfd {
   void 
   Nwd::listen_wsn_data(serial_manager *sm)
   {    
-  	   sm->read_data(interest_list,location_map);
+  	   sm->read_data(interest_list,wsn_location_map);
 	   
   }
 

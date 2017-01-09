@@ -143,13 +143,21 @@ namespace nfd{
 
 		void
 		Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest);
-	
+
+        void
+        wifi_update_id_location(std::string& str);
+
+        void
+        Wifi_Location_onInterest(const InterestFilter& filter, const Interest& interest);
+
+        void
+        Wifi_Topo_onInterest(const InterestFilter& filter, const Interest& interest);
 
 		void
   		onRegisterFailed(const Name& prefix, const std::string& reason);
 
 		void
-		Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest);
+        Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest);
 
 		void 
 		listen_wsn_data(serial_manager *sm);
@@ -213,13 +221,14 @@ namespace nfd{
 		time_t globe_timestamp;
 		std::set<WsnData> data_set;
 		std::set<std::string> topo_data;
-		std::map<std::string,std::string> location_map;
+		std::map<std::string,std::string> wsn_location_map;
+        std::map<std::string,std::string> wifi_location_map;
 		std::shared_ptr<Forwarder> m_forwarder;
 		std::string remote_name;
 		std::string face_name;
 		int wsn_nodes;
 		bool handle_interest_busy;
-		std::vector<std::string> wifi_user_id;
+
 		std::queue<std::string> receive_in_queue;
 		
 	};
