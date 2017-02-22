@@ -27,6 +27,7 @@
 #include "pit-algorithm.hpp"
 #include "../table/pit-entry.hpp"
 #include "../table/fib-entry.hpp"
+#include <climits>
 
 namespace nfd {
 namespace fw {
@@ -58,12 +59,14 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
   /* modified by ywb*/
   std::string interest_name = interest.getName().toUri();
   std::cout<<"interest is :"<<interest_name<<std::endl;
-  std::string::size_type x_start=interest_name.find('/',1);
+  std::string::size_type x_start=interest_name.find('/',1);  //当前命名为/location/x/y/,以后修改为更合适的名字
   std::string::size_type x_end = interest_name.find('/',x_start+1);
   std::string::size_type y_start=x_end;
   std::string::size_type y_end=interest_name.find('/',y_start+1);
-  std::string leftUp = interest_name.substr(x_start+1,x_end-x_start-1);
-  std::string rightDown = interest_name.substr(y_start+1,y_end-y_start-1);
+  std::string point_x = interest_name.substr(x_start+1,x_end-x_start-1);
+  std::string point_y = interest_name.substr(y_start+1,y_end-y_start-1);
+  int point_x_val=std::stoi(point_x);
+  int point_y_val=std::stoi(point_y);
 
 //  std::string::size_type replace_idx=leftUp.find("%2C");
 //  leftUp.replace(replace_idx,3,",");
@@ -71,26 +74,28 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 //  rightDown.replace(replace_idx,3,",");
 //  std::cout<<leftUp<<" , "<<rightDown<<std::endl;
 
-  std::string::size_type comma_idx= leftUp.find("%2C");
+//  std::string::size_type comma_idx= leftUp.find("%2C");
+//
+//
+//  int leftUp_x = std::stoi(leftUp.substr(0,comma_idx));
+//  int leftUp_y = std::stoi(leftUp.substr(comma_idx+3));
+//
+//  comma_idx=rightDown.find("%2C");
+//
+//  int rightDown_x = std::stoi(rightDown.substr(0,comma_idx));
+//  int rightDown_y = std::stoi(rightDown.substr(comma_idx+3));
 
-
-  int leftUp_x = std::stoi(leftUp.substr(0,comma_idx));
-  int leftUp_y = std::stoi(leftUp.substr(comma_idx+3));
-
-  comma_idx=rightDown.find("%2C");
-
-  int rightDown_x = std::stoi(rightDown.substr(0,comma_idx));
-  int rightDown_y = std::stoi(rightDown.substr(comma_idx+3));
-
-  std::cout<<"leftUp: "<<leftUp_x<<","<< leftUp_y<<"    rightDown: "<<rightDown_x<<","<<rightDown_y<<std::endl;
+  std::cout<<"point_x: "<<point_x<<"    point_y: "<<point_y<<std::endl;
 
   fib::NextHopList nexthops;
   auto fib_entry_itr=m_forwarder.getFib().begin();
-
+  auto min_distance_fib_itr=  fib_entry_itr; //查找距离最短的下一跳接口
+  int mindistance=INT_MAX;
   for(;fib_entry_itr!=m_forwarder.getFib().end();fib_entry_itr++){
     std::ostringstream os;
     os<<(*fib_entry_itr).getPrefix()<<std::endl;
     std::string fib_entry_name=os.str();
+      /*查找最近路由接口并转发，目前路由前缀为/nfd,后接地理位置*/
     if(fib_entry_name.find("/nfd")!=std::string::npos && fib_entry_name.find_first_of("0123456789") != std::string::npos) {
       std::cout<<"fib name is: "<<fib_entry_name<<std::endl;
       std::string::size_type pos1=fib_entry_name.find('/',1);
@@ -101,14 +106,20 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
       int position_y = std::stoi(fib_entry_name.substr(pos2+1));
       std::cout<<"position is ("<<position_x<<","<<position_y<<")"<<std::endl;
 
-
-      if(position_x >=leftUp_x && position_x <= rightDown_x  && position_y >=rightDown_y && position_y <= leftUp_y)
+      int distance=abs(point_x_val-position_x)*abs(point_x_val-position_x)+abs(point_y_val-position_y)*abs(point_y_val-position_y);
+      if(distance<mindistance)
       {
-//        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));
-          nexthops=(*fib_entry_itr).getNextHops();
+          mindistance=distance;
+          min_distance_fib_itr=fib_entry_itr;
       }
+
     }
   }
+
+
+//        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));
+  nexthops=(*min_distance_fib_itr).getNextHops();
+
 
 
 
