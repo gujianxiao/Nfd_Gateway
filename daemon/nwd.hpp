@@ -19,6 +19,7 @@
 #include "../../ndn-cxx-master/src/interest-filter.hpp"
 #include "../../ndn-cxx-master/src/encoding/nfd-constants.hpp"
 #include "../../../../../usr/include/c++/4.8/stdexcept"
+#include "../../ndn-cxx-master/src/management/nfd-controller.hpp"
 #include <ndn-cxx/management/nfd-controller.hpp>
 #include <ndn-cxx/security/validator-null.hpp>
 #include <ndn-cxx/util/face-uri.hpp>
@@ -31,7 +32,8 @@
 #include <climits>
 #include <ctime>
 #include <queue>
-
+#include <unordered_map>
+#include "coordinate.h"
 
 
 namespace nfd{
@@ -53,6 +55,10 @@ namespace nfd{
 	
 	
 	class serial_manager;
+    class Coordinate;
+    class CoordinateHash;
+    class CoordinateEqual;
+
 	
 	class Nwd{
 	public:
@@ -81,7 +87,7 @@ namespace nfd{
 				static void
     			start(ndn::Face& face, ndn::nfd::Controller& controller,const std::string& input,bool allowCreate,
           			const SuccessCallback& onSucceed,const FailureCallback& onFail);
-				
+
 			private:
 				FaceIdFetcher(ndn::Face& face,ndn::nfd::Controller& controller,bool allowCreate,
                   const SuccessCallback& onSucceed,const FailureCallback& onFail);
@@ -152,6 +158,9 @@ namespace nfd{
 
         void
         Wifi_Topo_onInterest(const InterestFilter& filter, const Interest& interest);
+
+        void
+        nfd_location_onInterest(const InterestFilter& filter, const Interest& interest);
 
 		void
   		onRegisterFailed(const Name& prefix, const std::string& reason);
@@ -228,9 +237,12 @@ namespace nfd{
 		std::string face_name;
 		int wsn_nodes;
 		bool handle_interest_busy;
+        std::map<std::pair<int,int>,int> routeweight_map;
+        double longitude;  //经度
+        double latitude;  //纬度
 
 		std::queue<std::string> receive_in_queue;
-		
+		std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual> route_table;  //路由表，计算邻居节点到目的节点的权值
 	};
 
 	}

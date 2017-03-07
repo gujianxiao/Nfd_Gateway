@@ -1,9 +1,6 @@
 #include "nwd.hpp"
 #include "wsn-data.hpp"
-#include "../../../../../usr/include/c++/4.8/ostream"
-#include "../../../../../usr/include/c++/4.8/iostream"
-#include "../../../../../usr/include/c++/4.8/string"
-#include "../../../../../usr/include/boost/algorithm/string.hpp"
+
 
 namespace nfd {
 	namespace gateway{
@@ -16,7 +13,7 @@ namespace nfd {
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
 		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0),
-		handle_interest_busy(false)
+		handle_interest_busy(false),longitude(10),latitude(10)  //网关经纬度
 	{
 //		io.run();
 	}
@@ -58,6 +55,11 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
+        m_face.setInterestFilter("/location/"+to_string(longitude)+"/"+to_string(latitude),
+                                 bind(&Nwd::nfd_location_onInterest, this, _1, _2),
+                                 ndn::RegisterPrefixSuccessCallback(),
+                                 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
 //		m_face.setInterestFilter("/localhost/wsn/range",
 //									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
 //									 ndn::RegisterPrefixSuccessCallback(),
@@ -83,6 +85,32 @@ namespace nfd {
 //		std::string interest_name = interest.getName().toUri();
 //		
 //	}
+
+    //名字前缀为地理位置信息，可以用来更新权值
+    void
+    Nwd::nfd_location_onInterest(const InterestFilter& filter, const Interest& interest)
+    {
+        std::cout << "<< I: " << interest << std::endl;
+        std::string interest_name = interest.getName().toUri();
+        std::string::size_type pos1;
+        if((pos1=interest_name.find("weight")) != std::string::npos)
+        {
+            std::string::size_type slash_pos1=pos1+6;
+            std::string::size_type slash_pos2=interest_name.find("/",slash_pos1+1);
+            std::string::size_type slash_pos3=interest_name.find("/",slash_pos2+1);
+            int longitude_val=std::stoi(interest_name.substr(slash_pos1+1,slash_pos2-slash_pos1-1));
+            int latitude_val=std::stoi(interest_name.substr(slash_pos2+1,slash_pos3-slash_pos2-1));
+            int weight_val=std::stoi(interest_name.substr(slash_pos3+1));
+            std::pair<int,int> route_weight_key(longitude_val,latitude_val);
+
+            routeweight_map[route_weight_key]=weight_val;   //更新权值
+
+
+
+        }
+
+    }
+
 
     /*目前没有使用*/
 	void

@@ -68,22 +68,6 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
   int point_x_val=std::stoi(point_x);
   int point_y_val=std::stoi(point_y);
 
-//  std::string::size_type replace_idx=leftUp.find("%2C");
-//  leftUp.replace(replace_idx,3,",");
-//  replace_idx=rightDown.find("%2C");
-//  rightDown.replace(replace_idx,3,",");
-//  std::cout<<leftUp<<" , "<<rightDown<<std::endl;
-
-//  std::string::size_type comma_idx= leftUp.find("%2C");
-//
-//
-//  int leftUp_x = std::stoi(leftUp.substr(0,comma_idx));
-//  int leftUp_y = std::stoi(leftUp.substr(comma_idx+3));
-//
-//  comma_idx=rightDown.find("%2C");
-//
-//  int rightDown_x = std::stoi(rightDown.substr(0,comma_idx));
-//  int rightDown_y = std::stoi(rightDown.substr(comma_idx+3));
 
   std::cout<<"point_x: "<<point_x<<"    point_y: "<<point_y<<std::endl;
 
