@@ -59,10 +59,13 @@ namespace nfd{
     class CoordinateHash;
     class CoordinateEqual;
 
-	
+
+
 	class Nwd{
 	public:
+        typedef std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual> RouteTable_Type;
 		Nwd(nfd::Nfd &);
+
 		
 		void
  		initialize();
@@ -83,6 +86,7 @@ namespace nfd{
 			public:
 				typedef std::function<void(uint32_t)> SuccessCallback;
    				typedef std::function<void(const std::string&)> FailureCallback;
+
 
 				static void
     			start(ndn::Face& face, ndn::nfd::Controller& controller,const std::string& input,bool allowCreate,
@@ -118,7 +122,9 @@ namespace nfd{
 
 				void
     			onFaceCreateError(uint32_t code,const std::string& error,const std::string& message);
-				
+
+
+
     			ndn::Face& m_face;
     			ndn::nfd::Controller& m_controller;
     			bool m_allowCreate;
@@ -127,6 +133,7 @@ namespace nfd{
     			ndn::ValidatorNull m_validator;
 		};
 	public:
+        friend class LocationRouteStrategy;
 		static const ndn::time::milliseconds DEFAULT_EXPIRATION_PERIOD;
 		static const uint64_t DEFAULT_COST;
 		uint64_t m_flags;
@@ -136,8 +143,15 @@ namespace nfd{
 		ndn::time::milliseconds m_expires;
 	    FacePersistency m_facePersistency;
 
+        static std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual>&
+        getRouteTable()
+        {
+            return  route_table;
+        };
 		
 	private:
+
+
 		void
   		onInterest(const InterestFilter& filter, const Interest& interest);
 
@@ -223,7 +237,7 @@ namespace nfd{
 		boost::condition_variable_any data_ready;
 		boost::asio::io_service io; 
 		
-//		boost::asio::io_service::work m_work;
+
 		boost::asio::steady_timer m_t;
 		boost::asio::steady_timer m_tsync; //for time sync
 		int local_timestamp;
@@ -242,7 +256,9 @@ namespace nfd{
         double latitude;  //纬度
 
 		std::queue<std::string> receive_in_queue;
-		std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual> route_table;  //路由表，计算邻居节点到目的节点的权值
+		static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
+
+
 	};
 
 	}

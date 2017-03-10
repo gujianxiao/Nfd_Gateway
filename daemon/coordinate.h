@@ -15,6 +15,7 @@ private:
     double longitude;  //经度
     double latitude;  //纬度
 public:
+    Coordinate(double x,double y):longitude(x),latitude(y){}
     double get_longgitude() const
     {
         return  longitude;

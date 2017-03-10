@@ -5,8 +5,10 @@
 namespace nfd {
 	namespace gateway{
 	NFD_LOG_INIT("Nwd");
-	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
-	const uint64_t Nwd::DEFAULT_COST = 0;
+
+    const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
+    const uint64_t Nwd::DEFAULT_COST = 0;
+    Nwd::RouteTable_Type Nwd::route_table={};
 		
 	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) , 
 		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
@@ -15,14 +17,13 @@ namespace nfd {
 		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0),
 		handle_interest_busy(false),longitude(10),latitude(10)  //网关经纬度
 	{
-//		io.run();
+
 	}
 	
 	void
 	Nwd::initialize()
 	{
-		auto ret=m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
-		NFD_LOG_INFO("+++++++++++++++++++++++ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111  "<<ret);
+		m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
 
 		m_face.setInterestFilter("/wsn/topo",
                              bind(&Nwd::Topo_onInterest, this, _1, _2),
@@ -60,31 +61,17 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
-//		m_face.setInterestFilter("/localhost/wsn/range",
-//									 bind(&Nwd::Wsn_Range_onInterest, this, _1, _2),
-//									 ndn::RegisterPrefixSuccessCallback(),
-//									 bind(&Nwd::onRegisterFailed, this, _1, _2));
-
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
-		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
+//		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
 		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this));
 
-//		std::cout<<"data_set max_size is"<<data_set.max_size()<<std::endl;
-		
-//		threadGroup.create_thread(boost::bind(&Nwd::io_service_run,this));
         threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
     	m_face.processEvents();
 		
 	}
 
-//	void
-//	Nwd::Wifi_onInterest(const InterestFilter& filter, const Interest& interest)
-//	{
-//		std::cout << "<< I: " << interest << std::endl;
-//		std::string interest_name = interest.getName().toUri();
-//		
-//	}
+
 
     //名字前缀为地理位置信息，可以用来更新权值
     void
@@ -104,8 +91,6 @@ namespace nfd {
             std::pair<int,int> route_weight_key(longitude_val,latitude_val);
 
             routeweight_map[route_weight_key]=weight_val;   //更新权值
-
-
 
         }
 
@@ -425,22 +410,7 @@ namespace nfd {
 		interest_name.replace(0, 1, "");
 //		std::string interest_copy=interest_name;
 		interest_list.insert(std::make_pair(interest_name,std::set<std::string>()));
-		
-//		std::string::size_type time_end_pos=interest_name.rfind("/");
-//		std::string::size_type time_mid_pos=interest_name.rfind("/",time_end_pos-1);
-//		std::string::size_type time_start_pos=interest_name.rfind("/",time_mid_pos-1);
-//		int endtime=std::stoi(interest_name.substr(time_mid_pos+1,time_end_pos-time_mid_pos-1));
-//		int starttime=std::stoi(interest_name.substr(time_start_pos+1,time_mid_pos-time_start_pos-1));
-//	
-//		starttime-=globe_timestamp;
-//		endtime-=globe_timestamp;
-//		std::cout<<"start:"<<starttime<<std::endl;
-//		std::cout<<"end:"<<endtime<<std::endl;
-//		if(starttime>=0 && endtime>=0){
-//			interest_name.replace(time_start_pos+1,time_end_pos-time_start_pos-1,std::to_string(starttime)+"/"+to_string(endtime));
-//			interest_name.replace(time_mid_pos+1,time_end_pos-time_mid_pos-1,std::to_string(endtime));
-//		}else
-//			return;
+
 		receive_in_queue.push(interest_name);
 		std::cout<<interest_name<<std::endl;
 		
@@ -467,10 +437,6 @@ namespace nfd {
 		}else{
 			search_dataset(interest_name);
 		}
-
-		
-//		getGlobalIoService().run();
-//		std::cout<<"after timer"<<std::endl;
   	}
 
   void 
@@ -512,8 +478,7 @@ namespace nfd {
 	in_time_beg=In_Name.rfind('/',in_time_mid-1);
 	int In_Start_Time=std::stoi(In_Name.substr(in_time_beg+1,in_time_mid-in_time_beg-1));
 	int In_End_Time=std::stoi(In_Name.substr(in_time_mid+1,in_time_end-in_time_mid-1));
-//	std::cout<<"start:"<<In_Start_Time<<"end:"<<In_End_Time<<std::endl;
-//	std::cout<<dataval.wsn_time<<std::endl;
+
 	if(dataval.wsn_time>=In_Start_Time && dataval.wsn_time<=In_End_Time){
 //		std::cout<<"dataset time match"<<std::endl;
 		return true;
@@ -530,8 +495,7 @@ namespace nfd {
 		in_scope_beg=Interest.find('/');
 		in_scope_mid=Interest.find('/',in_scope_beg+1);
 		in_scope_end=Interest.find('/',in_scope_mid+1);
-//		data_scope_beg=dataval.find('/');
-//		data_scope_end=dataval.find('/',data_scope_beg+1);
+
 
 		std::string in_scope_leftup=Interest.substr(in_scope_beg+1,in_scope_mid-in_scope_beg-1);
 		std::string in_scope_rightdown=Interest.substr(in_scope_mid+1,in_scope_end-in_scope_mid-1);
@@ -541,13 +505,7 @@ namespace nfd {
 		int in_rightdown_x=std::stoi(in_scope_rightdown.substr(0,in_scope_rightdown.find(',')));
 		int in_rightdown_y=std::stoi(in_scope_rightdown.substr(in_scope_rightdown.find(',')+1));
 
-//		std::string data_position=dataval.substr(data_scope_beg+1,data_scope_end-data_scope_beg-1);
 
-//		int data_position_x=std::stoi(data_position.substr(0,data_position.find(',')));
-//		int data_position_y=std::stoi(data_position.substr(data_position.find(',')+1));
-
-//		std::cout<<"interest is "<<in_leftup_x<<" , "<<in_leftup_y<<"/"<<in_rightdown_x<<","<<in_rightdown_y<<std::endl;
-//		std::cout<<"data is "<<data_position_x<<" , "<<data_position_y<<std::endl;
 		if(dataval.position_x>=in_leftup_x && dataval.position_x<=in_rightdown_x){
 			if(dataval.position_y>=in_rightdown_y && dataval.position_y<=in_leftup_y){			
 //				std::cout<<"data_set position match"<<std::endl;
@@ -565,7 +523,6 @@ namespace nfd {
               << std::endl;
     m_face.shutdown();
 
-
   }
 
   void 
@@ -577,7 +534,7 @@ namespace nfd {
 
   void 
   Nwd::wait_data(){
-		std::cout<<"in wait data"<<std::endl;
+
 		for(auto &itr:interest_list){
 		    std::string data_ret;
 		    std::string In_Name;
@@ -602,8 +559,6 @@ namespace nfd {
   void
   Nwd::send_data(std::string In_Name,std::string data_val)
   {
-//  	  std::cout<<data_val<<std::endl;
-	
 	  Name dataName(In_Name);
 	  
 	  shared_ptr<Data> data = make_shared<Data>();
@@ -628,7 +583,6 @@ namespace nfd {
   void
   Nwd::onSuccess(const ControlParameters& commandSuccessResult, const std::string& message)
   {
-	 
 	 std::cout << message << ": " << commandSuccessResult << std::endl;
   }
 
