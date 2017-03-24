@@ -38,8 +38,7 @@
 #include "table/dead-nonce-list.hpp"
 #include "table/network-region-table.hpp"
 #include "../../common.hpp"
-#include "../../../ndn-cxx-master/src/data.hpp"
-#include "../../../ndn-cxx-master/src/lp/nack.hpp"
+
 
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
