@@ -28,7 +28,6 @@
 #include "core/logger.hpp"
 #include "core/random.hpp"
 #include "strategy.hpp"
-#include "../../../ndn-cxx-master/src/data.hpp"
 #include <boost/random/uniform_int_distribution.hpp>
 
 namespace nfd {
