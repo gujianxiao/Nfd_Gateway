@@ -16,8 +16,6 @@
 #include "fw/forwarder.hpp"
 #include "fw/location-route-strategy.hpp"
 #include "nfd.hpp"
-
-#include "../../ndn-cxx-master/src/management/nfd-controller.hpp"
 #include <ndn-cxx/management/nfd-controller.hpp>
 #include <ndn-cxx/security/validator-null.hpp>
 #include <ndn-cxx/util/face-uri.hpp>
