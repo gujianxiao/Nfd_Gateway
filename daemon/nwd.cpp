@@ -1,17 +1,16 @@
 #include "nwd.hpp"
-#include "wsn-data.hpp"
+
 
 
 namespace nfd {
 	namespace gateway{
-	NFD_LOG_INIT("Nwd");
-
-    const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
-    const uint64_t Nwd::DEFAULT_COST = 0;
+//	NFD_LOG_INIT("Nwd");
+	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
+	const uint64_t Nwd::DEFAULT_COST = 0;
     Nwd::RouteTable_Type Nwd::route_table={};
 		
-	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) , 
-		m_origin(ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
+	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) ,
+		m_origin(ndn::nfd::ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
 		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0),
@@ -75,7 +74,7 @@ namespace nfd {
 
     //名字前缀为地理位置信息，可以用来更新权值
     void
-    Nwd::nfd_location_onInterest(const InterestFilter& filter, const Interest& interest)
+    Nwd::nfd_location_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
     {
         std::cout << "<< I: " << interest << std::endl;
         std::string interest_name = interest.getName().toUri();
@@ -99,7 +98,7 @@ namespace nfd {
 
     /*目前没有使用*/
 	void
-	Nwd::Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest)
+	Nwd::Wsn_Range_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
@@ -154,7 +153,7 @@ namespace nfd {
     }
 
     void
-    Nwd::Wifi_Location_onInterest(const InterestFilter& filter, const Interest& interest)
+    Nwd::Wifi_Location_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
     {
         std::cout << "<< I: " << interest << std::endl;
         std::string interest_name = interest.getName().toUri();
@@ -180,7 +179,7 @@ namespace nfd {
     }
 
     void
-    Nwd::Wifi_Topo_onInterest(const InterestFilter& filter, const Interest& interest)
+    Nwd::Wifi_Topo_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
     {
         std::cout << "<< I: " << interest << std::endl;
         std::string interest_name = interest.getName().toUri();
@@ -203,7 +202,7 @@ namespace nfd {
     }
 
 	void
-	Nwd::Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest)
+	Nwd::Wifi_Register_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
@@ -339,7 +338,7 @@ namespace nfd {
 	}
 
 	void
-	Nwd::Location_onInterest(const InterestFilter& filter, const Interest& interest)
+	Nwd::Location_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
@@ -364,7 +363,7 @@ namespace nfd {
 	}
 
 	void
-	Nwd::Topo_onInterest(const InterestFilter& filter, const Interest& interest)
+	Nwd::Topo_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
 	{
 		std::cout << "<< I: " << interest << std::endl;
 		std::string interest_name = interest.getName().toUri();
@@ -390,7 +389,7 @@ namespace nfd {
 	
 
 	void
-  	Nwd::onInterest(const InterestFilter& filter, const Interest& interest)
+  	Nwd::onInterest(const ndn::InterestFilter& filter, const Interest& interest)
   	{
     	
 		std::string interest_name = interest.getName().toUri();

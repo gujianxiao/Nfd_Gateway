@@ -16,9 +16,7 @@
 #include "fw/forwarder.hpp"
 #include "fw/location-route-strategy.hpp"
 #include "nfd.hpp"
-#include "../../ndn-cxx-master/src/interest-filter.hpp"
-#include "../../ndn-cxx-master/src/encoding/nfd-constants.hpp"
-#include "../../../../../usr/include/c++/4.8/stdexcept"
+
 #include "../../ndn-cxx-master/src/management/nfd-controller.hpp"
 #include <ndn-cxx/management/nfd-controller.hpp>
 #include <ndn-cxx/security/validator-null.hpp>
@@ -35,38 +33,41 @@
 #include <unordered_map>
 #include "coordinate.h"
 
+namespace ndn{
+    class Face;
+    class InterestFilter;
+    class Interest;
+    namespace mgmt {
+        class ControlParameters;
+    }
+    namespace nfd{
+        class Controller;
+    }
+}
 
 namespace nfd{
     namespace fw{
         class  LocationRouteStrategy;
     }
-	class Forwarder;
-	class Nfd;
-}
 
-namespace nfd{
+    class Forwarder;
+    class Nfd;
+
 	namespace gateway{
 
-//	using namespace ndn;
-	using ndn::InterestFilter;
-	using ndn::Interest; 
-	using ndn::Name;
 	using namespace ndn::nfd;
-	
-	
+
 	class serial_manager;
     class Coordinate;
     class CoordinateHash;
     class CoordinateEqual;
 
 
-
 	class Nwd{
 	public:
-        typedef std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual> RouteTable_Type;
+        using RouteTable_Type= std::unordered_multimap<Coordinate,std::pair<Coordinate,double>,CoordinateHash,CoordinateEqual> ;
 		Nwd(nfd::Nfd &);
 
-		
 		void
  		initialize();
 
@@ -141,46 +142,47 @@ namespace nfd{
   		uint64_t m_faceId;
    		uint64_t m_origin;
 		ndn::time::milliseconds m_expires;
-	    FacePersistency m_facePersistency;
+	    ndn::nfd::FacePersistency m_facePersistency;
 
-        static std::unordered_multimap<Coordinate,std::pair<Coordinate,int>,CoordinateHash,CoordinateEqual>&
+        static RouteTable_Type&
         getRouteTable()
         {
             return  route_table;
         };
+        static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
 		
 	private:
 
 
 		void
-  		onInterest(const InterestFilter& filter, const Interest& interest);
+  		onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void
-		Topo_onInterest(const InterestFilter& filter, const Interest& interest);
+		Topo_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void
-		Location_onInterest(const InterestFilter& filter, const Interest& interest);
+		Location_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void
-		Wifi_Register_onInterest(const InterestFilter& filter, const Interest& interest);
+		Wifi_Register_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
         void
         wifi_update_id_location(std::string& str);
 
         void
-        Wifi_Location_onInterest(const InterestFilter& filter, const Interest& interest);
+        Wifi_Location_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
         void
-        Wifi_Topo_onInterest(const InterestFilter& filter, const Interest& interest);
+        Wifi_Topo_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
         void
-        nfd_location_onInterest(const InterestFilter& filter, const Interest& interest);
+        nfd_location_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void
   		onRegisterFailed(const Name& prefix, const std::string& reason);
 
 		void
-        Wsn_Range_onInterest(const InterestFilter& filter, const Interest& interest);
+        Wsn_Range_onInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void 
 		listen_wsn_data(serial_manager *sm);
@@ -256,7 +258,7 @@ namespace nfd{
         double latitude;  //纬度
 
 		std::queue<std::string> receive_in_queue;
-		static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
+
 
 
 	};

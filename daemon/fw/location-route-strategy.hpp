@@ -27,18 +27,21 @@
 #define NFD_DAEMON_FW_WSN_ROUTE_STRATEGY_HPP
 
 #include "strategy.hpp"
-#include "../nwd.hpp"
+
 #include "../coordinate.h"
+#include "../nwd.hpp"
 
 
 namespace nfd {
     namespace gateway {
         class Nwd;
         class Coordinate;
+        class CoordinateHash;
+        class CoordinateEqual;
     }
 namespace fw {
-    using gateway::Nwd;
-    using gateway::Coordinate;
+
+
 /** \brief Best Route strategy version 1
  *
  *  This strategy forwards a new Interest to the lowest-cost nexthop
@@ -53,9 +56,11 @@ namespace fw {
 class LocationRouteStrategy : public Strategy
 {
 public:
+
   LocationRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
   void getPointLocation(std::string& interest_name,std::string& point_x,std::string& point_y);
-  std::vector<Fib::const_iterator> cal_Nexthos(int point_x,int point_y);
+  std::vector<Fib::const_iterator> cal_Nexthos(gateway::Coordinate& );
+  void getNeighborsCoordinate();
 
   virtual
   ~LocationRouteStrategy();
@@ -68,6 +73,9 @@ public:
 
 public:
   static const Name STRATEGY_NAME;
+private:
+  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
+
 
 };
 

@@ -1,0 +1,51 @@
+In file included from ../daemon/nwd.hpp:17:0,
+                 from ../daemon/nwd.cpp:1:
+../daemon/fw/location-route-strategy.hpp:76:3: error: ‘RouteTable_Type’ in ‘class nfd::gateway::Nwd’ does not name a type
+   gateway::Nwd::RouteTable_Type&  routeTable;
+
+   ^
+In file included from ../daemon/nwd.cpp:1:0:
+../daemon/nwd.hpp:259:26: error: ‘nfd::gateway::Nwd::RouteTable_Type nfd::gateway::Nwd::route_table’ is private
+   static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
+                          ^
+../daemon/nwd.cpp:10:10: error: within this context
+     Nwd::route_table={};
+
+          ^
+../daemon/nwd.cpp:10:5: error: ‘route_table’ in ‘class nfd::gateway::Nwd’ does not name a type
+     Nwd::route_table={};
+
+     ^
+../daemon/nwd.cpp:10:24: warning: extra ‘;’ [-Wpedantic]
+     Nwd::route_table={};
+
+                        ^
+In file included from /home/youngwb/NFD_Master/NFD-master/daemon/face/face-log.hpp:29:0,
+                 from /home/youngwb/NFD_Master/NFD-master/daemon/face/transport.hpp:30,
+                 from /home/youngwb/NFD_Master/NFD-master/daemon/face/face.hpp:29,
+                 from ../daemon/fw/face-table.hpp:29,
+                 from ../daemon/fw/forwarder.hpp:32,
+                 from ../daemon/nwd.hpp:16,
+                 from ../daemon/nwd.cpp:1:
+/home/youngwb/NFD_Master/NFD-master/core/logger.hpp:113:21: warning: ‘nfd::gateway::g_logger’ defined but not used [-Wunused-variable]
+ static nfd::Logger& g_logger = nfd::LoggerFactory::create(name)
+                     ^
+../daemon/nwd.cpp:7:2: note: in expansion of macro ‘NFD_LOG_INIT’
+  NFD_LOG_INIT("Nwd");
+
+  ^
+
+In file included from ../daemon/nwd.hpp:17:0,
+                 from ../daemon/main.cpp:28:
+../daemon/fw/location-route-strategy.hpp:76:3: error: ‘RouteTable_Type’ in ‘class nfd::gateway::Nwd’ does not name a type
+   gateway::Nwd::RouteTable_Type&  routeTable;
+
+   ^
+
+Build failed
+ -> task in 'daemon-objects' failed (exit status 1): 
+	{task 140555151962192: cxx nwd.cpp -> nwd.cpp.3.o}
+['/usr/bin/g++', '-O2', '-g', '-pedantic', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wno-missing-field-initializers', '-std=c++11', '-pthread', '-include', '/home/youngwb/NFD_Master/NFD-master/build/core-objects.2', '-I/home/youngwb/NFD_Master/NFD-master/build/daemon', '-I/home/youngwb/NFD_Master/NFD-master/daemon', '-I/home/youngwb/NFD_Master/NFD-master/build', '-I/home/youngwb/NFD_Master/NFD-master', '-I/home/youngwb/NFD_Master/NFD-master/build/core', '-I/home/youngwb/NFD_Master/NFD-master/core', '-I/usr/include', '-I/home/youngwb/NFD_OBJ/include', '-I/home/youngwb/NFD_Master/NFD-master/websocketpp', '-DNDEBUG', '-DHAVE_NDN_CXX=1', '../daemon/nwd.cpp', '-c', '-o', '/home/youngwb/NFD_Master/NFD-master/build/daemon/nwd.cpp.3.o']
+ -> task in 'bin/nfd' failed (exit status 1): 
+	{task 140555151996944: cxx main.cpp -> main.cpp.5.o}
+['/usr/bin/g++', '-O2', '-g', '-pedantic', '-Wall', '-Wextra', '-Wno-unused-parameter', '-Wno-missing-field-initializers', '-std=c++11', '-pthread', '-I/home/youngwb/NFD_Master/NFD-master/build/daemon', '-I/home/youngwb/NFD_Master/NFD-master/daemon', '-I/home/youngwb/NFD_Master/NFD-master/build', '-I/home/youngwb/NFD_Master/NFD-master', '-I/home/youngwb/NFD_Master/NFD-master/build/core', '-I/home/youngwb/NFD_Master/NFD-master/core', '-I/usr/include', '-I/home/youngwb/NFD_OBJ/include', '-I/home/youngwb/NFD_Master/NFD-master/websocketpp', '-DNDEBUG', '-DHAVE_NDN_CXX=1', '../daemon/main.cpp', '-c', '-o', '/home/youngwb/NFD_Master/NFD-master/build/daemon/main.cpp.5.o']

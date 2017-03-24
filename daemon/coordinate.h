@@ -5,10 +5,11 @@
 #ifndef NFD_MASTER_COORDINATE_H
 #define NFD_MASTER_COORDINATE_H
 
-#include <boost/variant/variant.hpp>
+#include <boost/functional/hash.hpp>
 
 namespace nfd {
     namespace gateway {
+
 class Coordinate
 {
 private:
@@ -16,7 +17,7 @@ private:
     double latitude;  //纬度
 public:
     Coordinate(double x,double y):longitude(x),latitude(y){}
-    double get_longgitude() const
+    double get_longitude() const
     {
         return  longitude;
     }
@@ -25,18 +26,21 @@ public:
     {
         return  latitude;
     }
-
+    friend class  CoordinateHash;
+    friend class  CoordinateEqual;
+//    bool operator == (const Coordinate& c)
+//    {
+//        return longitude == c.longitude && latitude == c.latitude;
+//    }
 
 };
-
-
 
 class CoordinateHash
 {
 public:
     std::size_t operator() (const Coordinate& c) const
     {
-        return boost::hash_value (std::pair<double,double>(c.get_latitude(),c.get_longgitude()));
+        return boost::hash_value (std::pair<double,double>(c.latitude,c.longitude));
     }
 
 };
@@ -44,16 +48,17 @@ public:
 class CoordinateEqual
 {
 public:
-    bool operator() (const Coordinate& c1,const Coordinate& c2)
+    bool operator() (const Coordinate& c1,const Coordinate& c2) const
     {
-        if(c1.get_latitude() == c2.get_latitude() && c1.get_longgitude() == c2.get_longgitude())
+        if(c1.latitude == c2.latitude&& c1.longitude == c2.longitude)
             return  true;
         else
             return  false;
     }
-
 };
 
+double distance(const Coordinate& c1, const Coordinate& c2);
+std::ostream& operator << (std::ostream& output,const Coordinate& c);
 
 
     }
