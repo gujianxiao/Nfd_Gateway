@@ -166,7 +166,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
         }
 
         shared_ptr<Face> outFace = it->getFace();
-        std::cout<<outFace->getRemoteUri()<<std::endl;
+        std::cout<<"send to Face : "<<outFace->getRemoteUri()<<std::endl;
         this->sendInterest(pitEntry, outFace);
     }
 

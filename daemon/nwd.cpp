@@ -4,7 +4,7 @@
 
 namespace nfd {
 	namespace gateway{
-//	NFD_LOG_INIT("Nwd");
+	NFD_LOG_INIT("Nwd");
 	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
 	const uint64_t Nwd::DEFAULT_COST = 0;
     Nwd::RouteTable_Type Nwd::route_table={};
@@ -62,9 +62,9 @@ namespace nfd {
 
 
 		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
-//		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
-		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this))->detach();
 
+		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this))->detach();
+//
         threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
     	m_face.processEvents();
 		

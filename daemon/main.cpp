@@ -226,7 +226,8 @@ public:
 		nwd.initialize();
 		
 		});
-//	nwdThread.join();
+	nwdThread.detach();
+
   }
 
 private:
