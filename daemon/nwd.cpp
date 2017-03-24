@@ -60,12 +60,15 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
+        int fdusb = open(USB_PATH_PORT, O_RDWR);
+        if(fdusb == 0) {
 
-		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
+            threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
 
-		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this))->detach();
+            threadGroup.create_thread(boost::bind(&Nwd::time_sync_init, this))->detach();
 //
-        threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
+            threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
+        }
     	m_face.processEvents();
 		
 	}
