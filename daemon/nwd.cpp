@@ -61,11 +61,11 @@ namespace nfd {
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
 
-		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager));
+		threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
 //		threadGroup.create_thread(boost::bind(&Nwd::wait_data,this));
-		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this));
+		threadGroup.create_thread(boost::bind(&Nwd::time_sync_init,this))->detach();
 
-        threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager));
+        threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
     	m_face.processEvents();
 		
 	}
