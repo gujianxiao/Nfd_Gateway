@@ -8,15 +8,18 @@ namespace nfd {
 	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
 	const uint64_t Nwd::DEFAULT_COST = 0;
     Nwd::RouteTable_Type Nwd::route_table={};
+    Nwd::Neighbor_Type Nwd::neighbors_list={};
+    Coordinate Nwd::self;
 		
 	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) ,
 		m_origin(ndn::nfd::ROUTE_ORIGIN_STATIC),m_expires(DEFAULT_EXPIRATION_PERIOD),
 		m_facePersistency(ndn::nfd::FacePersistency::FACE_PERSISTENCY_PERSISTENT),
 		m_controller(m_face, m_keyChain),m_serialManager(data_ready),m_t(m_face.getIoService()),
 		m_tsync(m_face.getIoService()),local_timestamp(0),globe_timestamp(0),m_forwarder(nfd.get_Forwarder()),wsn_nodes(0),
-		handle_interest_busy(false),longitude(10),latitude(10)  //网关经纬度
+		handle_interest_busy(false),longitude(10),latitude(10) //网关经纬度
 	{
-
+        self.set_latitude(latitude);
+        self.set_longitude(longitude);
 	}
 	
 	void

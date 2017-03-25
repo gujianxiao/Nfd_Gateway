@@ -30,6 +30,7 @@
 
 #include "../coordinate.h"
 #include "../nwd.hpp"
+#include "../table/routetable-entry.hpp"
 
 
 namespace nfd {
@@ -38,6 +39,7 @@ namespace nfd {
         class Coordinate;
         class CoordinateHash;
         class CoordinateEqual;
+        class RouteTableEntry;
     }
 namespace fw {
 
@@ -59,8 +61,8 @@ public:
 
   LocationRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
   void getPointLocation(std::string& interest_name,std::string& point_x,std::string& point_y);
-  std::vector<Fib::const_iterator> cal_Nexthos(gateway::Coordinate& );
-  void getNeighborsCoordinate();
+  std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
+  void getNeighborsCoordinate(shared_ptr<pit::Entry>);
 
   virtual
   ~LocationRouteStrategy();
@@ -74,7 +76,7 @@ public:
 public:
   static const Name STRATEGY_NAME;
 private:
-  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
+//  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
 
 
 };

@@ -16,7 +16,7 @@ private:
     double longitude;  //经度
     double latitude;  //纬度
 public:
-    Coordinate(double x,double y):longitude(x),latitude(y){}
+    Coordinate(double x=0, double y=0):longitude(x),latitude(y){}
     double get_longitude() const
     {
         return  longitude;
@@ -26,12 +26,28 @@ public:
     {
         return  latitude;
     }
+
+    void set_longitude(double x)
+    {
+        longitude=x;
+    }
+
+    void set_latitude(double y)
+    {
+        latitude=y;
+    }
+
     friend class  CoordinateHash;
     friend class  CoordinateEqual;
-//    bool operator == (const Coordinate& c)
-//    {
-//        return longitude == c.longitude && latitude == c.latitude;
-//    }
+    bool operator == (const Coordinate& c) const
+    {
+        return longitude == c.longitude && latitude == c.latitude;
+    }
+
+    bool operator != (const Coordinate& c) const
+    {
+        return longitude != c.longitude || latitude == c.latitude;
+    }
 
 };
 

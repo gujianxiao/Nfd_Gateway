@@ -56,41 +56,73 @@ LocationRouteStrategy::getPointLocation(std::string& interest_name,std::string& 
     point_y = interest_name.substr(y_start+1,y_end-y_start-1);
 }
 
-std::vector<Fib::const_iterator>
-LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest)
+std::vector<shared_ptr<Face>>
+LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Entry> pitEntry)
 {
-    std::vector<Fib::const_iterator> ret;
-    if(gateway::Nwd::route_table.find(dest)!=gateway::Nwd::route_table.end())
+    std::vector<shared_ptr<Face>> ret;
+    auto result=gateway::Nwd::route_table.find(dest);
+    if(result!=gateway::Nwd::route_table.end())
     {
+        if(result->second.get_status() == gateway::RouteTableEntry::unreachable) //目标不可达
+        {
+            return  ret;   //返回空的结果
+        }
+
         //查询权值最小的路径
         double minweight  =std::numeric_limits<double>::max();
-        Fib::const_iterator min_distance_fib_itr;
+        shared_ptr<Face> min_face;
         auto search_range=gateway::Nwd::route_table.equal_range(dest);
 
         for(auto itr =search_range.first;itr!=search_range.second;++itr)
         {
-            double weight  = (*itr).second.second;    //路由表中的权值
+            double weight  = itr->second.get_weight();    //路由表中的权值
 //            std::cout<<(*itr).second.first<<std::endl;
             if(weight<minweight)
             {
                 minweight=weight;
-                min_distance_fib_itr=neighbors_list.find((*itr).second.first)->second;
+                min_face=gateway::Nwd::neighbors_list.find(itr->second.get_nexthop())->second;
             }
         }
-
-        ret.push_back(min_distance_fib_itr);
+        ret.push_back(min_face);
 
     }else
     {
         //路由表没有记录，第一次查询，需要将所有邻居节点到目标的权值计算一遍并加入到路由表中
         //需向所有邻居节点发送数据，根据返回的数据更改权值，下一次就可以直接发送到目的节点
-        if(neighbors_list.empty())
-            getNeighborsCoordinate();
-        for(auto itr:neighbors_list)
+        if(gateway::Nwd::neighbors_list.empty())
+            getNeighborsCoordinate(pitEntry);
+        auto itr=gateway::Nwd::neighbors_list.find(dest);
+        if(itr != gateway::Nwd::neighbors_list.end())//在邻居列表里
+        {
+            ret.push_back(itr->second);
+            return ret; //邻居列表查询到，直接返回
+        }
+
+        //不在邻居列表里，需要计算与目标节点的距离
+        gateway::Coordinate minnexthop;
+        double minweight  =std::numeric_limits<double>::max();
+        shared_ptr<Face> minface;
+        for(auto itr:gateway::Nwd::neighbors_list)
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
-            gateway::Nwd::route_table.insert(std::make_pair(dest,std::make_pair(itr.first,weight)));  //将与目标初始值插入路由表
-            ret.push_back(itr.second);
+            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
+            if(weight<minweight)
+            {
+                minweight=weight;
+                minface=itr.second;
+                minnexthop=itr.first;
+            }
+        }
+        if(minnexthop == gateway::Nwd::get_SelfCoordinate()) //自己即是局部最优点
+        {
+            for(auto itr:gateway::Nwd::neighbors_list){
+                if(itr.first != minnexthop)
+                    ret.push_back(itr.second);
+            }
+        }
+        else
+        {
+            ret.push_back(minface);
         }
     }
     return  ret;
@@ -98,7 +130,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest)
 }
 
 void
-LocationRouteStrategy::getNeighborsCoordinate()
+LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
 {
     auto fib_entry_itr=m_forwarder.getFib().begin();
 
@@ -117,7 +149,11 @@ LocationRouteStrategy::getNeighborsCoordinate()
             double position_x = std::stod(fib_entry_name.substr(pos1+1,pos2-pos1-1));
             double position_y = std::stod(fib_entry_name.substr(pos2+1));
             std::cout<<"position is ("<<position_x<<","<<position_y<<")"<<std::endl;
-            neighbors_list.insert(make_pair(gateway::Coordinate(position_x,position_y),fib_entry_itr));
+            fib::NextHopList nexthops;
+            nexthops=fib_entry_itr->getNextHops();
+            fib::NextHopList::const_iterator it = std::find_if(nexthops.begin(), nexthops.end(), [&pitEntry] (const fib::NextHop& nexthop) { return canForwardToLegacy(*pitEntry, *nexthop.getFace()); });
+            shared_ptr<Face> outFace = it->getFace();
+            gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x,position_y),outFace));
 
         }
     }
@@ -149,25 +185,25 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 
     gateway::Coordinate dest(point_x_val,point_y_val);  //目标位置
     fib::NextHopList nexthops;   //下一跳的列表
-    std::vector<Fib::const_iterator> fibs_to_transfor;
+    std::vector<shared_ptr<Face>> faces_to_send;
 
-    if(neighbors_list.empty())
-        getNeighborsCoordinate();
+    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
+        getNeighborsCoordinate(pitEntry);
 
-    fibs_to_transfor=cal_Nexthos(dest);  //计算并返回下一跳的fib条目
-    for(auto itr:fibs_to_transfor)
+    faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
+    for(auto itr:faces_to_send)
     {
-        nexthops=(*itr).getNextHops();
-        //  const fib::NextHopList& nexthops = fibEntry->getNextHops();
-        fib::NextHopList::const_iterator it = std::find_if(nexthops.begin(), nexthops.end(), [&pitEntry] (const fib::NextHop& nexthop) { return canForwardToLegacy(*pitEntry, *nexthop.getFace()); });
-        if (it == nexthops.end()) {
-            this->rejectPendingInterest(pitEntry);
-            return;
-        }
+//        nexthops=(*itr).getNextHops();
+//        //  const fib::NextHopList& nexthops = fibEntry->getNextHops();
+//        fib::NextHopList::const_iterator it = std::find_if(nexthops.begin(), nexthops.end(), [&pitEntry] (const fib::NextHop& nexthop) { return canForwardToLegacy(*pitEntry, *nexthop.getFace()); });
+//        if (it == nexthops.end()) {
+//            this->rejectPendingInterest(pitEntry);
+//            return;
+//        }
 
-        shared_ptr<Face> outFace = it->getFace();
-        std::cout<<"send to Face : "<<outFace->getRemoteUri()<<std::endl;
-        this->sendInterest(pitEntry, outFace);
+//        shared_ptr<Face> outFace = it->getFace();
+        std::cout<<"send to Face : "<<itr->getRemoteUri()<<std::endl;
+        this->sendInterest(pitEntry, itr);
     }
 
     //        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));

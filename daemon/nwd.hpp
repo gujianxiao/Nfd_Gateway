@@ -30,6 +30,7 @@
 #include <queue>
 #include <unordered_map>
 #include "coordinate.h"
+#include "table/routetable-entry.hpp"
 
 namespace ndn{
     class Face;
@@ -40,6 +41,10 @@ namespace ndn{
     }
     namespace nfd{
         class Controller;
+        namespace face {
+            class Face;
+        } // namespace face
+
     }
 }
 
@@ -59,11 +64,13 @@ namespace nfd{
     class Coordinate;
     class CoordinateHash;
     class CoordinateEqual;
+    class RouteTableEntry;
 
 
 	class Nwd{
 	public:
-        using RouteTable_Type= std::unordered_multimap<Coordinate,std::pair<Coordinate,double>,CoordinateHash,CoordinateEqual> ;
+        using RouteTable_Type= std::unordered_multimap<Coordinate,RouteTableEntry,CoordinateHash,CoordinateEqual> ;
+        typedef std::unordered_map<Coordinate,std::shared_ptr<nfd::face::Face>,CoordinateHash,CoordinateEqual> Neighbor_Type;
 		Nwd(nfd::Nfd &);
 
 		void
@@ -135,6 +142,7 @@ namespace nfd{
         friend class LocationRouteStrategy;
 		static const ndn::time::milliseconds DEFAULT_EXPIRATION_PERIOD;
 		static const uint64_t DEFAULT_COST;
+
 		uint64_t m_flags;
  		uint64_t m_cost;
   		uint64_t m_faceId;
@@ -142,13 +150,20 @@ namespace nfd{
 		ndn::time::milliseconds m_expires;
 	    ndn::nfd::FacePersistency m_facePersistency;
 
-        static RouteTable_Type&
-        getRouteTable()
+        static RouteTable_Type& getRouteTable()
         {
             return  route_table;
         };
+
+        static Coordinate get_SelfCoordinate()
+        {
+            return self;
+        }
+
+        static Neighbor_Type neighbors_list;  //邻居列表
         static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
-		
+        static Coordinate self;  //网关自身位置
+
 	private:
 
 
@@ -255,8 +270,9 @@ namespace nfd{
         double longitude;  //经度
         double latitude;  //纬度
 
-		std::queue<std::string> receive_in_queue;
 
+
+        std::queue<std::string> receive_in_queue;
 
 
 	};
