@@ -46,7 +46,7 @@ public:
 
     bool operator != (const Coordinate& c) const
     {
-        return longitude != c.longitude || latitude == c.latitude;
+        return longitude != c.longitude || latitude != c.latitude;
     }
 
 };

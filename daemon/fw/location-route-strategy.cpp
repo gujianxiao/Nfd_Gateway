@@ -121,8 +121,8 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     {
         std::cout<<"局部最优点  "<<minnexthop<<std::endl;
         for(auto itr:gateway::Nwd::neighbors_list){
-            if(!(itr.first == minnexthop)) {
-                std::cout<<itr.first<<std::endl;
+            if(itr.first != minnexthop) {
+//                std::cout<<itr.first<<std::endl;
                 ret.push_back(itr.second);
             }
         }
