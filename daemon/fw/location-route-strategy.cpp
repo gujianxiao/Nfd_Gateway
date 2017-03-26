@@ -119,9 +119,12 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     }
     if(minnexthop == gateway::Nwd::get_SelfCoordinate()) //自己即是局部最优点
     {
+        std::cout<<"局部最优点"<<std::endl;
         for(auto itr:gateway::Nwd::neighbors_list){
-            if(itr.first != minnexthop)
+            if(itr.first != minnexthop) {
+                std::cout<<itr.first<<std::endl;
                 ret.push_back(itr.second);
+            }
         }
     }
     else
