@@ -266,7 +266,7 @@ namespace nfd{
 		std::string face_name;
 		int wsn_nodes;
 		bool handle_interest_busy;
-        std::map<std::pair<int,int>,int> routeweight_map;
+//        std::map<std::pair<int,int>,int> routeweight_map;
         double longitude;  //经度
         double latitude;  //纬度
 

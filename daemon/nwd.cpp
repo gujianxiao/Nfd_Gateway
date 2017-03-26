@@ -58,7 +58,7 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
-        m_face.setInterestFilter("/location/"+to_string(longitude)+"/"+to_string(latitude),
+        m_face.setInterestFilter("/nfd/"+to_string(longitude)+"/"+to_string(latitude),
                                  bind(&Nwd::nfd_location_onInterest, this, _1, _2),
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
@@ -82,22 +82,46 @@ namespace nfd {
     void
     Nwd::nfd_location_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
     {
+//        std::cout << "<< I: " << interest << std::endl;
+//        std::string interest_name = interest.getName().toUri();
+//        std::string::size_type pos1;
+//        if((pos1=interest_name.find("weight")) != std::string::npos)
+//        {
+//            std::string::size_type slash_pos1=pos1+6;
+//            std::string::size_type slash_pos2=interest_name.find("/",slash_pos1+1);
+//            std::string::size_type slash_pos3=interest_name.find("/",slash_pos2+1);
+//            int longitude_val=std::stoi(interest_name.substr(slash_pos1+1,slash_pos2-slash_pos1-1));
+//            int latitude_val=std::stoi(interest_name.substr(slash_pos2+1,slash_pos3-slash_pos2-1));
+//            int weight_val=std::stoi(interest_name.substr(slash_pos3+1));
+//            std::pair<int,int> route_weight_key(longitude_val,latitude_val);
+//
+//            routeweight_map[route_weight_key]=weight_val;   //更新权值
+//
+//        }
         std::cout << "<< I: " << interest << std::endl;
-        std::string interest_name = interest.getName().toUri();
-        std::string::size_type pos1;
-        if((pos1=interest_name.find("weight")) != std::string::npos)
-        {
-            std::string::size_type slash_pos1=pos1+6;
-            std::string::size_type slash_pos2=interest_name.find("/",slash_pos1+1);
-            std::string::size_type slash_pos3=interest_name.find("/",slash_pos2+1);
-            int longitude_val=std::stoi(interest_name.substr(slash_pos1+1,slash_pos2-slash_pos1-1));
-            int latitude_val=std::stoi(interest_name.substr(slash_pos2+1,slash_pos3-slash_pos2-1));
-            int weight_val=std::stoi(interest_name.substr(slash_pos3+1));
-            std::pair<int,int> route_weight_key(longitude_val,latitude_val);
 
-            routeweight_map[route_weight_key]=weight_val;   //更新权值
+        // Create new name, based on Interest's name
+        Name dataName(interest.getName());
+        dataName
+                .append("testApp") // add "testApp" component to Interest name
+                .appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
 
-        }
+        static const std::string content = "HELLO KITTY1111";
+
+        // Create Data packet
+        shared_ptr<Data> data = make_shared<Data>();
+        data->setName(dataName);
+        data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
+
+        // Sign Data packet with default identity
+        m_keyChain.sign(*data);
+        // m_keyChain.sign(data, <identityName>);
+        // m_keyChain.sign(data, <certificate>);
+
+        // Return Data packet to the requester
+        std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);
 
     }
 
