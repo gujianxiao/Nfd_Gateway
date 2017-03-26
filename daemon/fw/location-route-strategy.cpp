@@ -56,14 +56,29 @@ LocationRouteStrategy::getPointLocation(std::string& interest_name,std::string& 
     point_y = interest_name.substr(y_start+1,y_end-y_start-1);
 }
 
+void
+LocationRouteStrategy::printRouteTable() const
+{
+    std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+    std::cout<<std::setw(15)<<"dest"<<std::setw(15)<<"nexthop"<<std::setw(15)<<"weight"<<std::setw(15)<<"status"<<std::endl;
+    for(auto itr : gateway::Nwd::route_table)
+    {
+        std::cout<<itr.first<<itr.second<<std::endl;
+    }
+    std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+
+}
+
+
 std::vector<shared_ptr<Face>>
 LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Entry> pitEntry)
 {
     std::vector<shared_ptr<Face>> ret;
-    auto itr=gateway::Nwd::neighbors_list.find(dest);  //首先查询邻居列表，找到直接返回
-    if(itr != gateway::Nwd::neighbors_list.end())//在邻居列表里
+    auto neighbors_list_itr=gateway::Nwd::neighbors_list.find(dest);  //首先查询邻居列表，找到直接返回
+    if(neighbors_list_itr != gateway::Nwd::neighbors_list.end())//在邻居列表里
     {
-        ret.push_back(itr->second);
+        std::cout<<"邻居列表中"<<std::endl;
+        ret.push_back(neighbors_list_itr->second);
         return ret; //邻居列表查询到，直接返回
     }
 
@@ -71,12 +86,13 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     double minweight  =std::numeric_limits<double>::max();
     shared_ptr<Face> minface;
     gateway::Coordinate minnexthop;
-
+    auto route_table_itr=gateway::Nwd::route_table.begin();
     auto result=gateway::Nwd::route_table.find(dest);
     if(result!=gateway::Nwd::route_table.end())  //查找到了
     {
         if(result->second.get_status() == gateway::RouteTableEntry::unreachable) //目标不可达
         {
+            std::cout<<"目标不可达"<<std::endl;
             return  ret;   //返回空的结果
         }
 
@@ -84,15 +100,15 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
 
         auto search_range=gateway::Nwd::route_table.equal_range(dest);
 
-        for(auto itr =search_range.first;itr!=search_range.second;++itr)
+        for(route_table_itr=search_range.first;route_table_itr!=search_range.second;++route_table_itr)
         {
-            double weight  = itr->second.get_weight();    //路由表中的权值
+            double weight  = route_table_itr->second.get_weight();    //路由表中的权值
 //            std::cout<<(*itr).second.first<<std::endl;
             if(weight<minweight)
             {
                 minweight=weight;
-                minnexthop=itr->second.get_nexthop();
-                minface=gateway::Nwd::neighbors_list.find(itr->second.get_nexthop())->second;
+                minnexthop=route_table_itr->second.get_nexthop();
+                minface=gateway::Nwd::neighbors_list.find(route_table_itr->second.get_nexthop())->second;
             }
         }
 
@@ -107,12 +123,13 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         for(auto itr:gateway::Nwd::neighbors_list)
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
-            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
+            auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
             if(weight<minweight)
             {
                 minweight=weight;
                 minface=itr.second;
                 minnexthop=itr.first;
+                route_table_itr=tmp;
             }
         }
 
@@ -126,12 +143,13 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 ret.push_back(itr.second);
             }
         }
+        route_table_itr->second.set_status(gateway::RouteTableEntry::flood);
     }
     else
     {
         ret.push_back(minface);
     }
-
+    printRouteTable();
     return  ret;
 
 }
@@ -172,7 +190,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
                                         shared_ptr<fib::Entry> fibEntry,
                                         shared_ptr<pit::Entry> pitEntry)
 {
-    std::cout<<"*******************************"<<std::endl;
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
     std::cout<<"receive a nfd location Interest"<<std::endl;
     if (hasPendingOutRecords(*pitEntry)) {
     // not a new Interest, don't forward
@@ -216,6 +234,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     //        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));
 
     //  std::cout<<(*it).getFace()<<std::endl;
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 
 }
 

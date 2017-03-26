@@ -29,6 +29,7 @@ namespace nfd{
 //            return  dest_;
 //        }
 
+
         gateway::Coordinate get_nexthop() const
         {
             return nexthop_;
@@ -43,8 +44,14 @@ namespace nfd{
         {
             return flag_;
         }
+
+        void set_status(Status s)
+        {
+            flag_=s;
+        }
     };
 
+    std::ostream& operator<< (std::ostream& os ,  const RouteTableEntry & re);
     }
 }
 #endif //NFD_MASTER_ROUTETABLE_ENTRY_HPP

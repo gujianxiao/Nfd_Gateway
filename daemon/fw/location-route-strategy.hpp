@@ -63,8 +63,9 @@ public:
   void getPointLocation(std::string& interest_name,std::string& point_x,std::string& point_y);
   std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
   void getNeighborsCoordinate(shared_ptr<pit::Entry>);
+  void printRouteTable() const;
 
-  virtual
+    virtual
   ~LocationRouteStrategy();
 
   virtual void

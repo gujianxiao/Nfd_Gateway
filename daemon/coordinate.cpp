@@ -3,6 +3,7 @@
 //
 
 #include "coordinate.h"
+#include <iomanip>
 
 namespace nfd {
     namespace gateway {
@@ -15,7 +16,7 @@ namespace nfd {
 
     std::ostream& operator << (std::ostream& output,const Coordinate& c)
     {
-        output<<"("<<c.get_longitude()<<" , "<<c.get_latitude()<<")"<<std::endl;
+        output<<std::setw(7)<<"("<<c.get_longitude()<<" , "<<c.get_latitude()<<")";
         return  output;
     }
 
