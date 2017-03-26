@@ -187,8 +187,8 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     fib::NextHopList nexthops;   //下一跳的列表
     std::vector<shared_ptr<Face>> faces_to_send;
 
-    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
-        getNeighborsCoordinate(pitEntry);
+//    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
+        getNeighborsCoordinate(pitEntry);  //暂时每次读更新邻居列表，否则当FIB条目更新时无法获取
 
     faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
     for(auto itr:faces_to_send)

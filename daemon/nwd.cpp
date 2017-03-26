@@ -78,7 +78,7 @@ namespace nfd {
 
 
 
-    //名字前缀为地理位置信息，可以用来更新权值
+    //目前为测试接口，后续添加更多功能
     void
     Nwd::nfd_location_onInterest(const ndn::InterestFilter& filter, const Interest& interest)
     {
