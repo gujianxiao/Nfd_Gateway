@@ -65,7 +65,7 @@ public:
   std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
   void getNeighborsCoordinate(shared_ptr<pit::Entry>);
   void printRouteTable() const;
-  void Interest_Expiry(shared_ptr<pit::Entry> pitEntry) ;
+  void Interest_Expiry(shared_ptr<pit::Entry> pitEntry,const boost::system::error_code& err) ;
 
     virtual
   ~LocationRouteStrategy();

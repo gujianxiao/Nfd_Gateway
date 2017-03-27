@@ -196,8 +196,13 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
     }
 }
 
-void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry)
+void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,const boost::system::error_code& err)
 {
+    if(err)
+    {
+        std::cout<<"定时器取消"<<std::endl;
+        return ;
+    }
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
     std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
     std::string Point_x,Point_y;
@@ -269,7 +274,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
     time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
     m_t.expires_from_now(std::chrono::nanoseconds(lastExpiryFromNow.count()/2));
-    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry));
+    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
 
     fib::NextHopList nexthops;   //下一跳的列表
     std::vector<shared_ptr<Face>> faces_to_send;
