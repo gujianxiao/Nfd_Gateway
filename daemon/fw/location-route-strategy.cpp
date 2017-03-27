@@ -100,15 +100,16 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
 
         auto search_range=gateway::Nwd::route_table.equal_range(dest);
 
-        for(route_table_itr=search_range.first;route_table_itr!=search_range.second;++route_table_itr)
+        for(auto itr=search_range.first;itr!=search_range.second;++itr)
         {
-            double weight  = route_table_itr->second.get_weight();    //路由表中的权值
+            double weight  = itr->second.get_weight();    //路由表中的权值
 //            std::cout<<(*itr).second.first<<std::endl;
             if(weight<minweight)
             {
                 minweight=weight;
-                minnexthop=route_table_itr->second.get_nexthop();
-                minface=gateway::Nwd::neighbors_list.find(route_table_itr->second.get_nexthop())->second;
+                minnexthop=itr->second.get_nexthop();
+                minface=gateway::Nwd::neighbors_list.find(itr->second.get_nexthop())->second;
+                route_table_itr=itr;
             }
         }
 
