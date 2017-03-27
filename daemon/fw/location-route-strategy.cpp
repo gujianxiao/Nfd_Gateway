@@ -313,7 +313,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
 {
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
     std::cout<<"收到data"<<std::endl;
-    m_t.cancel_one();
+    m_t.cancel();
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 
 }
