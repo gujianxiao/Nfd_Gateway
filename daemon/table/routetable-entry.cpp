@@ -20,6 +20,10 @@ namespace nfd {
             os<<std::setw(15)<<"unknown";
         else if(re.get_status() == RouteTableEntry::flood)
             os<<std::setw(15)<<"flood";
+        else if(re.get_status() == RouteTableEntry::reachable)
+            os<<std::setw(15)<<"reachable";
+        else if(re.get_status() == RouteTableEntry::sending)
+            os<<std::setw(15)<<"sending";
         return os;
     }
     }

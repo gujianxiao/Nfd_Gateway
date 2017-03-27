@@ -11,7 +11,7 @@ namespace nfd{
     class RouteTableEntry
     {
     public:
-        enum Status {neighbor,unreachable,unknown,flood};
+        enum Status {neighbor,unreachable,reachable,unknown,flood,sending};
     private:
 //        gateway::Coordinate dest_;
         gateway::Coordinate nexthop_;

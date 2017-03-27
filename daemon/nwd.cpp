@@ -9,6 +9,7 @@ namespace nfd {
 	const uint64_t Nwd::DEFAULT_COST = 0;
     Nwd::RouteTable_Type Nwd::route_table={};
     Nwd::Neighbor_Type Nwd::neighbors_list={};
+    Nwd::Reverse_Neighbor_Type Nwd::reverse_neighbors_list={};
     Coordinate Nwd::self;
 		
 	Nwd::Nwd(nfd::Nfd& nfd) : m_flags(ndn::nfd::ROUTE_FLAG_CHILD_INHERIT), m_cost(DEFAULT_COST) ,

@@ -46,7 +46,7 @@ LocationRouteStrategy::~LocationRouteStrategy()
 
 /*将兴趣包的地理位置取出，写入point的横纵坐标中*/
 void
-LocationRouteStrategy::getPointLocation(std::string& interest_name,std::string& point_x,std::string& point_y)
+LocationRouteStrategy::getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y)
 {
     std::string::size_type x_start=interest_name.find('/',1);  //当前命名为/location/x/y/,以后修改为更合适的名字
     std::string::size_type x_end = interest_name.find('/',x_start+1);
@@ -59,13 +59,13 @@ LocationRouteStrategy::getPointLocation(std::string& interest_name,std::string& 
 void
 LocationRouteStrategy::printRouteTable() const
 {
-    std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+    std::cout<<"-------------------------------------------------------------"<<std::endl;
     std::cout<<std::setw(15)<<"dest"<<std::setw(15)<<"nexthop"<<std::setw(15)<<"weight"<<std::setw(15)<<"status"<<std::endl;
     for(auto itr : gateway::Nwd::route_table)
     {
         std::cout<<itr.first<<itr.second<<std::endl;
     }
-    std::cout<<"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"<<std::endl;
+    std::cout<<"-------------------------------------------------------------"<<std::endl;
 
 }
 
@@ -90,11 +90,21 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     auto result=gateway::Nwd::route_table.find(dest);
     if(result!=gateway::Nwd::route_table.end())  //查找到了
     {
-        if(result->second.get_status() == gateway::RouteTableEntry::unreachable) //目标不可达
+        auto range=gateway::Nwd::route_table.equal_range(dest);
+        auto it=range.first;
+        for(;it!=range.second;++it)
         {
-            std::cout<<"目标不可达"<<std::endl;
-            return  ret;   //返回空的结果
+            if (result->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
+            {
+                break;
+            }
         }
+        if(it==range.second)
+        {
+            std::cout << "目标不可达" << std::endl;
+            return ret;   //返回空的结果
+        }
+
 
         //查询权值最小的路径
 
@@ -104,7 +114,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         {
             double weight  = itr->second.get_weight();    //路由表中的权值
 //            std::cout<<(*itr).second.first<<std::endl;
-            if(weight<minweight)
+            if(weight<minweight && itr->second.get_status() !=gateway::RouteTableEntry::unreachable )
             {
                 minweight=weight;
                 minnexthop=itr->second.get_nexthop();
@@ -149,6 +159,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     else
     {
         ret.push_back(minface);
+        route_table_itr->second.set_status(gateway::RouteTableEntry::sending);
     }
     printRouteTable();
     return  ret;
@@ -180,7 +191,7 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
             fib::NextHopList::const_iterator it = std::find_if(nexthops.begin(), nexthops.end(), [&pitEntry] (const fib::NextHop& nexthop) { return canForwardToLegacy(*pitEntry, *nexthop.getFace()); });
             shared_ptr<Face> outFace = it->getFace();
             gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x,position_y),outFace));
-
+            gateway::Nwd::reverse_neighbors_list.insert(make_pair(outFace,gateway::Coordinate(position_x,position_y)));
         }
     }
 }
@@ -235,6 +246,46 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     //        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));
 
     //  std::cout<<(*it).getFace()<<std::endl;
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+
+}
+
+void
+LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEntry)
+{
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
+    std::string Point_x,Point_y;
+    std::ostringstream os;
+    os<<pitEntry->getName();
+    getPointLocation(os.str(),Point_x,Point_y);
+    gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
+    auto range=gateway::Nwd::route_table.equal_range(dest);
+    for(auto itr=range.first;itr!=range.second;++itr)
+    {
+        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        {
+            gateway::Nwd::route_table.erase(dest);
+            gateway::Coordinate tmp;
+            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
+            break;
+        }
+    }
+    if(gateway::Nwd::route_table.find(dest)->second.get_status() != gateway::RouteTableEntry::unreachable )  //没有洪泛过
+    {
+        for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
+            std::cout<<"flooding"<<std::endl;
+            std::cout<<"send to Face : "<<itr.second->getRemoteUri()<<std::endl;
+            this->sendInterest(pitEntry, itr.second);
+        }
+        auto rang=gateway::Nwd::route_table.equal_range(dest);
+        for(auto it=rang.first;it!=rang.second;++it)
+        {
+            it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
+        }
+
+    }
+
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 
 }

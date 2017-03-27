@@ -71,6 +71,7 @@ namespace nfd{
 	public:
         using RouteTable_Type= std::unordered_multimap<Coordinate,RouteTableEntry,CoordinateHash,CoordinateEqual> ;
         typedef std::unordered_map<Coordinate,std::shared_ptr<nfd::face::Face>,CoordinateHash,CoordinateEqual> Neighbor_Type;
+        typedef std::unordered_map<std::shared_ptr<nfd::face::Face>,Coordinate> Reverse_Neighbor_Type;
 		Nwd(nfd::Nfd &);
 
 		void
@@ -163,6 +164,7 @@ namespace nfd{
         static Neighbor_Type neighbors_list;  //邻居列表
         static RouteTable_Type route_table;  //路由表，计算邻居节点到目的节点的权值
         static Coordinate self;  //网关自身位置
+        static Reverse_Neighbor_Type reverse_neighbors_list;
 
 	private:
 

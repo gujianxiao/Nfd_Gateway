@@ -31,6 +31,7 @@
 #include "../coordinate.h"
 #include "../nwd.hpp"
 #include "../table/routetable-entry.hpp"
+#include <sstream>
 
 
 namespace nfd {
@@ -60,7 +61,7 @@ class LocationRouteStrategy : public Strategy
 public:
 
   LocationRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
-  void getPointLocation(std::string& interest_name,std::string& point_x,std::string& point_y);
+  void getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y);
   std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
   void getNeighborsCoordinate(shared_ptr<pit::Entry>);
   void printRouteTable() const;
@@ -73,6 +74,9 @@ public:
                        const Interest& interest,
                        shared_ptr<fib::Entry> fibEntry,
                        shared_ptr<pit::Entry> pitEntry) override;
+
+  virtual void
+  beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEntry) override ;
 
 public:
   static const Name STRATEGY_NAME;
