@@ -236,7 +236,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
         }
 
     }
-
+    printRouteTable();
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 }
 
@@ -317,8 +317,31 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                           const Face& inFace, const Data& data)
 {
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
-    std::cout<<"收到data"<<std::endl;
     m_t.cancel();
+    std::cout<<"收到data from ";
+    for(auto itr : gateway::Nwd::neighbors_list)
+    {
+        if(itr.second->getId() == inFace.getId())
+        {
+            std::cout << itr.first << std::endl;
+            std::string Point_x,Point_y;
+            std::ostringstream os;
+            os<<pitEntry->getName();
+            getPointLocation(os.str(),Point_x,Point_y);
+            gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
+            auto ret=gateway::Nwd::route_table.equal_range(dest);
+            for(auto it=ret.first;it!=ret.second;++it)
+            {
+                if(it->second.get_nexthop()==itr.first)
+                    it->second.set_status(gateway::RouteTableEntry::reachable);
+            }
+
+        }
+    }
+
+
+
+    printRouteTable();
     std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 
 }
