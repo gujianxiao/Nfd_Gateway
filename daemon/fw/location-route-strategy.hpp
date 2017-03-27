@@ -65,6 +65,7 @@ public:
   std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
   void getNeighborsCoordinate(shared_ptr<pit::Entry>);
   void printRouteTable() const;
+  void Interest_Expiry(shared_ptr<pit::Entry> pitEntry) ;
 
     virtual
   ~LocationRouteStrategy();
@@ -81,6 +82,7 @@ public:
 public:
   static const Name STRATEGY_NAME;
 private:
+    boost::asio::steady_timer m_t;
 //  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
 
 

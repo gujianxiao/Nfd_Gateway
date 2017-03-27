@@ -37,7 +37,7 @@ const Name LocationRouteStrategy::STRATEGY_NAME("ndn:/localhost/nfd/strategy/loc
 NFD_REGISTER_STRATEGY(LocationRouteStrategy);
 
 LocationRouteStrategy::LocationRouteStrategy(Forwarder& forwarder, const Name& name)
-  : Strategy(forwarder, name)
+  : Strategy(forwarder, name),m_t(getGlobalIoService())
 {
 }
 LocationRouteStrategy::~LocationRouteStrategy()
@@ -196,6 +196,46 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
     }
 }
 
+void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry)
+{
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
+    std::string Point_x,Point_y;
+    std::ostringstream os;
+    os<<pitEntry->getName();
+    getPointLocation(os.str(),Point_x,Point_y);
+    gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
+    auto range=gateway::Nwd::route_table.equal_range(dest);
+    for(auto itr=range.first;itr!=range.second;++itr)
+    {
+        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        {
+            gateway::Nwd::route_table.erase(dest);
+            gateway::Coordinate tmp;
+            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
+            break;
+        }
+    }
+    if(gateway::Nwd::route_table.find(dest)->second.get_status() != gateway::RouteTableEntry::unreachable )  //没有洪泛过
+    {
+        std::cout<<"flooding"<<std::endl;
+        for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
+
+            std::cout<<"send to Face : "<<itr.second->getRemoteUri()<<std::endl;
+            this->sendInterest(pitEntry, itr.second);
+        }
+        auto rang=gateway::Nwd::route_table.equal_range(dest);
+        for(auto it=rang.first;it!=rang.second;++it)
+        {
+            it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
+        }
+
+    }
+
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+}
+
+
 void
 LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
                                         const Interest& interest,
@@ -219,8 +259,18 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     double point_x_val=std::stod(point_x);
     double point_y_val=std::stod(point_y);
 //    std::cout<<"point_x: "<<point_x<<"    point_y: "<<point_y<<std::endl;
-
     gateway::Coordinate dest(point_x_val,point_y_val);  //目标位置
+
+    pit::InRecordCollection::iterator lastExpiring =
+            std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
+                return a.getExpiry() < b.getExpiry();
+            });
+
+    time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
+    time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
+    m_t.expires_from_now(std::chrono::nanoseconds(lastExpiryFromNow.count()/2));
+    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry));
+
     fib::NextHopList nexthops;   //下一跳的列表
     std::vector<shared_ptr<Face>> faces_to_send;
 
@@ -253,40 +303,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 void
 LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEntry)
 {
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
-    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
-    std::string Point_x,Point_y;
-    std::ostringstream os;
-    os<<pitEntry->getName();
-    getPointLocation(os.str(),Point_x,Point_y);
-    gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
-    auto range=gateway::Nwd::route_table.equal_range(dest);
-    for(auto itr=range.first;itr!=range.second;++itr)
-    {
-        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
-        {
-            gateway::Nwd::route_table.erase(dest);
-            gateway::Coordinate tmp;
-            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
-            break;
-        }
-    }
-    if(gateway::Nwd::route_table.find(dest)->second.get_status() != gateway::RouteTableEntry::unreachable )  //没有洪泛过
-    {
-        for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
-            std::cout<<"flooding"<<std::endl;
-            std::cout<<"send to Face : "<<itr.second->getRemoteUri()<<std::endl;
-            this->sendInterest(pitEntry, itr.second);
-        }
-        auto rang=gateway::Nwd::route_table.equal_range(dest);
-        for(auto it=rang.first;it!=rang.second;++it)
-        {
-            it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
-        }
 
-    }
-
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
 
 }
 
