@@ -307,6 +307,18 @@ LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEnt
 
 }
 
+void
+LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
+                          const Face& inFace, const Data& data)
+{
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"收到data"<<std::endl;
+    m_t.cancel_one();
+    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+
+}
+
+
 } // namespace fw
 } // namespace nfd
 

@@ -79,6 +79,10 @@ public:
   virtual void
   beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEntry) override ;
 
+  virtual void
+  beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
+                          const Face& inFace, const Data& data);
+
 public:
   static const Name STRATEGY_NAME;
 private:
