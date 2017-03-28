@@ -105,6 +105,17 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
             return ret;   //返回空的结果
         }
 
+        //查询是否存在可达路径
+        it=range.first;
+        for(;it!=range.second;++it)
+        {
+            if(it->second.get_status() == gateway::RouteTableEntry::reachable)//存在可达路径，不用计算
+            {
+                std::cout<<"存在可达路径"<<std::endl;
+                ret.push_back(gateway::Nwd::neighbors_list.find(it->second.get_nexthop())->second);
+                return ret;
+            }
+        }
 
         //查询权值最小的路径
 
@@ -161,6 +172,18 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         ret.push_back(minface);
         route_table_itr->second.set_status(gateway::RouteTableEntry::sending);
     }
+
+    //启动定时器，避免用户端超时
+    pit::InRecordCollection::iterator lastExpiring =
+            std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
+                return a.getExpiry() < b.getExpiry();
+            });
+
+    time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
+    time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
+    m_t.expires_from_now(std::chrono::nanoseconds(lastExpiryFromNow.count()/2));
+    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
+
     printRouteTable();
     return  ret;
 
@@ -203,7 +226,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
         std::cout<<"定时器取消"<<std::endl;
         return ;
     }
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
     std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
     std::string Point_x,Point_y;
     std::ostringstream os;
@@ -237,7 +260,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
 
     }
     printRouteTable();
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
 }
 
 
@@ -247,7 +270,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
                                         shared_ptr<fib::Entry> fibEntry,
                                         shared_ptr<pit::Entry> pitEntry)
 {
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
     std::cout<<"receive a nfd location Interest"<<std::endl;
     if (hasPendingOutRecords(*pitEntry)) {
     // not a new Interest, don't forward
@@ -266,15 +289,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 //    std::cout<<"point_x: "<<point_x<<"    point_y: "<<point_y<<std::endl;
     gateway::Coordinate dest(point_x_val,point_y_val);  //目标位置
 
-    pit::InRecordCollection::iterator lastExpiring =
-            std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
-                return a.getExpiry() < b.getExpiry();
-            });
 
-    time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
-    time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
-    m_t.expires_from_now(std::chrono::nanoseconds(lastExpiryFromNow.count()/2));
-    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
 
     fib::NextHopList nexthops;   //下一跳的列表
     std::vector<shared_ptr<Face>> faces_to_send;
@@ -301,14 +316,34 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     //        fibEntry.reset(const_cast<fib::Entry*>(&*fib_entry_itr));
 
     //  std::cout<<(*it).getFace()<<std::endl;
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
 
 }
 
 void
 LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEntry)
 {
+    std::cout<<"******************************************************************"<<std::endl;
+    std::cout<<"pit条目："<<pitEntry->getName()<<"失效"<<std::endl;
+    std::string Point_x,Point_y;
+    std::ostringstream os;
+    os<<pitEntry->getName();
+    getPointLocation(os.str(),Point_x,Point_y);
+    gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
 
+    auto range=gateway::Nwd::route_table.equal_range(dest);
+    for(auto itr=range.first;itr!=range.second;++itr)
+    {
+        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        {
+            gateway::Nwd::route_table.erase(dest);
+            gateway::Coordinate tmp;
+            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
+            break;
+        }
+    }
+
+    std::cout<<"******************************************************************"<<std::endl;
 
 }
 
@@ -316,7 +351,7 @@ void
 LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                           const Face& inFace, const Data& data)
 {
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
     m_t.cancel();
     std::cout<<"收到data from ";
     for(auto itr : gateway::Nwd::neighbors_list)
@@ -334,6 +369,9 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             {
                 if(it->second.get_nexthop()==itr.first)
                     it->second.set_status(gateway::RouteTableEntry::reachable);
+                else
+                    it->second.set_status(gateway::RouteTableEntry::unknown);
+
             }
 
         }
@@ -342,7 +380,8 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
 
 
     printRouteTable();
-    std::cout<<"*******************************××××××××××××××××××××××××××××××××"<<std::endl;
+    std::cout<<"******************************************************************"<<std::endl;
+
 
 }
 
