@@ -302,11 +302,9 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 
 //    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
     getNeighborsCoordinate(pitEntry);  //暂时每次读更新邻居列表，否则当FIB条目更新时无法获取
-<<<<<<< HEAD
+
     std::cout<<"邻居表读取完毕"<<std::endl;
-=======
-    std::cout<<"更新邻居列表完毕"<<std::endl;
->>>>>>> 45689f3320b1a9385023a240fed5d271617353c9
+
     faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
     std::cout<<"计算下一跳完毕"<<std::endl;
     for(auto itr:faces_to_send)
