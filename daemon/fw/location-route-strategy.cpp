@@ -214,9 +214,13 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
             fib::NextHopList nexthops;
             nexthops=fib_entry_itr->getNextHops();
             fib::NextHopList::const_iterator it = std::find_if(nexthops.begin(), nexthops.end(), [&pitEntry] (const fib::NextHop& nexthop) { return canForwardToLegacy(*pitEntry, *nexthop.getFace()); });
-            shared_ptr<Face> outFace = it->getFace();
-            gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x,position_y),outFace));
-            gateway::Nwd::reverse_neighbors_list.insert(make_pair(outFace,gateway::Coordinate(position_x,position_y)));
+            if (it != nexthops.end()) {
+                shared_ptr <Face> outFace = it->getFace();
+                gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x, position_y), outFace));
+                gateway::Nwd::reverse_neighbors_list.insert(
+                        make_pair(outFace, gateway::Coordinate(position_x, position_y)));
+
+            }
             std::cout<<"in if"<<std::endl;
         }
         std::cout<<"test"<<std::endl;

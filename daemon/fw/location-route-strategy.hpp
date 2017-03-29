@@ -92,6 +92,7 @@ public:
 private:
     boost::asio::steady_timer m_t;
     FaceId incoming_id;
+
 //  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
 
 
