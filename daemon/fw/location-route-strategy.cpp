@@ -215,7 +215,9 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
             shared_ptr<Face> outFace = it->getFace();
             gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x,position_y),outFace));
             gateway::Nwd::reverse_neighbors_list.insert(make_pair(outFace,gateway::Coordinate(position_x,position_y)));
+            std::cout<<"in if"<<std::endl;
         }
+        std::cout<<"test"<<std::endl;
     }
 }
 
@@ -296,7 +298,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 
 //    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
     getNeighborsCoordinate(pitEntry);  //暂时每次读更新邻居列表，否则当FIB条目更新时无法获取
-
+    std::cout<<"邻居表读取完毕"<<std::endl;
     faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
     for(auto itr:faces_to_send)
     {
