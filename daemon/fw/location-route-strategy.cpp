@@ -221,9 +221,8 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
                         make_pair(outFace, gateway::Coordinate(position_x, position_y)));
 
             }
-            std::cout<<"in if"<<std::endl;
         }
-        std::cout<<"test"<<std::endl;
+
     }
 }
 
@@ -355,7 +354,7 @@ LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEnt
             break;
         }
     }
-
+    printRouteTable();
     std::cout<<"******************************************************************"<<std::endl;
 
 }
