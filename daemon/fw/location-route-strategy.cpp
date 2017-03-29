@@ -37,7 +37,7 @@ const Name LocationRouteStrategy::STRATEGY_NAME("ndn:/localhost/nfd/strategy/loc
 NFD_REGISTER_STRATEGY(LocationRouteStrategy);
 
 LocationRouteStrategy::LocationRouteStrategy(Forwarder& forwarder, const Name& name)
-  : Strategy(forwarder, name),m_t(getGlobalIoService())
+  : Strategy(forwarder, name),m_t(getGlobalIoService()),incoming_id(0)
 {
 }
 LocationRouteStrategy::~LocationRouteStrategy()
@@ -146,7 +146,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
             auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
-            if(weight<minweight)
+            if(weight<minweight && itr.second->getId() != incoming_id)
             {
                 minweight=weight;
                 minface=itr.second;
@@ -181,7 +181,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
 
     time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
     time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
-    m_t.expires_from_now(std::chrono::nanoseconds(lastExpiryFromNow.count()/2));
+    m_t.expires_from_now(std::chrono::nanoseconds(800));
     m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
 
     printRouteTable();
@@ -279,6 +279,8 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
         return;
     }
 
+    incoming_id=inFace.getId();
+
     /* modified by ywb*/
     std::string interest_name = interest.getName().toUri();
     std::cout<<"interest is :"<<interest_name<<std::endl;
@@ -298,8 +300,13 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
 
 //    if(gateway::Nwd::neighbors_list.empty())  //初始化邻居列表
     getNeighborsCoordinate(pitEntry);  //暂时每次读更新邻居列表，否则当FIB条目更新时无法获取
+<<<<<<< HEAD
     std::cout<<"邻居表读取完毕"<<std::endl;
+=======
+    std::cout<<"更新邻居列表完毕"<<std::endl;
+>>>>>>> 45689f3320b1a9385023a240fed5d271617353c9
     faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
+    std::cout<<"计算下一跳完毕"<<std::endl;
     for(auto itr:faces_to_send)
     {
 //        nexthops=(*itr).getNextHops();

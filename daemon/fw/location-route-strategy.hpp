@@ -42,6 +42,10 @@ namespace nfd {
         class CoordinateEqual;
         class RouteTableEntry;
     }
+
+    namespace face{
+        class Face;
+    }
 namespace fw {
 
 
@@ -59,7 +63,7 @@ namespace fw {
 class LocationRouteStrategy : public Strategy
 {
 public:
-
+  typedef uint64_t FaceId;
   LocationRouteStrategy(Forwarder & forwarder,const Name & name = STRATEGY_NAME);
   void getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y);
   std::vector<shared_ptr<Face>> cal_Nexthos(gateway::Coordinate& ,shared_ptr<pit::Entry>);
@@ -87,6 +91,7 @@ public:
   static const Name STRATEGY_NAME;
 private:
     boost::asio::steady_timer m_t;
+    FaceId incoming_id;
 //  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;
 
 
