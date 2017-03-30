@@ -59,6 +59,20 @@ LocationRouteStrategy::getPointLocation(std::string interest_name,std::string& p
 }
 
 void
+LocationRouteStrategy::printNeighborsTable() const
+{
+    std::cout<<"-------------------------------------------------------------"<<std::endl;
+    std::cout<<std::setw(15)<<"neighbor"<<std::setw(15)<<"face"<<std::endl;
+    for(auto itr : gateway::Nwd::neighbors_list)
+    {
+        std::cout<<itr.first<<std::setw(15)<<itr.second->getRemoteUri()<<std::endl;
+    }
+    std::cout<<"-------------------------------------------------------------"<<std::endl;
+
+}
+
+
+void
 LocationRouteStrategy::printRouteTable() const
 {
     std::cout<<"-------------------------------------------------------------"<<std::endl;
@@ -102,7 +116,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 if(it->second.get_nexthop() == itr.first)
                     break;
             }
-            if(it != range.second) {  //路由表以前没有该项
+            if(it == range.second) {  //路由表以前没有该项
                 double weight = gateway::distance(itr.first, dest); //计算邻居节点与目的节点的距离
                 auto tmp = gateway::Nwd::route_table.insert(
                         std::make_pair(dest, gateway::RouteTableEntry(itr.first, weight,
@@ -351,6 +365,7 @@ LocationRouteStrategy::afterReceiveInterest(const Face& inFace,
     getNeighborsCoordinate(pitEntry);  //暂时每次读更新邻居列表，否则当FIB条目更新时无法获取
 
     std::cout<<"邻居表读取完毕"<<std::endl;
+    printNeighborsTable();
 
     faces_to_send=cal_Nexthos(dest,pitEntry);  //计算并返回下一跳的fib条目
     std::cout<<"计算下一跳完毕"<<std::endl;

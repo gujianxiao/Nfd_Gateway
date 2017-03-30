@@ -70,6 +70,7 @@ public:
   void getNeighborsCoordinate(shared_ptr<pit::Entry>);
   void printRouteTable() const;
   void Interest_Expiry(shared_ptr<pit::Entry> pitEntry,const boost::system::error_code& err) ;
+  void printNeighborsTable() const;
 
     virtual
   ~LocationRouteStrategy();
