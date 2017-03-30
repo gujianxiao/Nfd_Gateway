@@ -94,7 +94,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     {
         auto range=gateway::Nwd::route_table.equal_range(dest);
         auto it=range.first;
-        for(;it!=range.second;++it)
+        for(;it!=range.second;++it) //检查路由表中是否全部都是不可达
         {
             if (result->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
             {
@@ -117,7 +117,9 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 ret.push_back(gateway::Nwd::neighbors_list.find(it->second.get_nexthop())->second);
                 return ret;
             }
+
         }
+
 
         //查询权值最小的路径
 
@@ -148,7 +150,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
             auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
-            if(weight<minweight && itr.second->getId() != incoming_id)
+            if(weight<minweight && itr.second->getId() != incoming_id)  //选择的路径不能包括来时的face
             {
                 minweight=weight;
                 minface=itr.second;
@@ -160,14 +162,25 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     }
     if(minnexthop == gateway::Nwd::get_SelfCoordinate()) //自己即是局部最优点
     {
-        std::cout<<"局部最优点  "<<minnexthop<<std::endl;
-        for(auto itr:gateway::Nwd::neighbors_list){
-            if(itr.first != minnexthop) {
+        std::cout<<"局部最小点  "<<minnexthop<<std::endl;
+        for(auto itr:gateway::Nwd::neighbors_list){  //需要洪泛
+            if(itr.first != minnexthop && itr.second->getId() != incoming_id) {  //自身和收到请求的face不能洪泛
 //                std::cout<<itr.first<<std::endl;
                 ret.push_back(itr.second);
+                auto range=gateway::Nwd::route_table.equal_range(dest);
+                auto it=range.first;
+                for(;it!=range.second;++it)
+                {
+                    if(it->second.get_nexthop() == itr.first)
+                    {
+                        it->second.set_status(gateway::RouteTableEntry::flood);  //将其他face标志为flood
+                        break;
+                    }
+                }
+
             }
         }
-        route_table_itr->second.set_status(gateway::RouteTableEntry::flood);
+        route_table_itr->second.set_status(gateway::RouteTableEntry::minlocal);  //将自身标为局部最小点
     }
     else
     {
@@ -240,29 +253,43 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
     os<<pitEntry->getName();
     getPointLocation(os.str(),Point_x,Point_y);
     gateway::Coordinate dest(std::stod(Point_x),std::stod(Point_y));
+
+    bool flood_flag=false;  //洪泛标志
+
     auto range=gateway::Nwd::route_table.equal_range(dest);
     for(auto itr=range.first;itr!=range.second;++itr)
     {
-        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态 ,将不能收到data的face标志为不可达
         {
-            gateway::Nwd::route_table.erase(dest);
-            gateway::Coordinate tmp;
-            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
-            break;
+            itr->second.set_status(gateway::RouteTableEntry::unreachable);
+
         }
+        else if(itr->second.get_status() == gateway::RouteTableEntry::minlocal)
+        {
+            flood_flag=true;
+        }
+
     }
-    if(gateway::Nwd::route_table.find(dest)->second.get_status() != gateway::RouteTableEntry::unreachable )  //没有洪泛过
+    if(!flood_flag )  //没有洪泛过
     {
         std::cout<<"flooding"<<std::endl;
-        for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
-
-            std::cout<<"send to Face : "<<itr.second->getRemoteUri()<<std::endl;
-            this->sendInterest(pitEntry, itr.second);
-        }
+        gateway::Coordinate sending_cd; //之前发送的位置
         auto rang=gateway::Nwd::route_table.equal_range(dest);
         for(auto it=rang.first;it!=rang.second;++it)
         {
-            it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
+            if(it->second.get_status() == gateway::RouteTableEntry::sending)
+            {
+                it->second.set_status(gateway::RouteTableEntry::unreachable);  //将之前发送face标志为不可达
+                sending_cd=it->second.get_nexthop();
+            }
+            else
+                it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
+        }
+        for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
+            if(itr.first != sending_cd) {  //不再向之前发送的face发送
+                std::cout << "send to Face : " << itr.second->getRemoteUri() << std::endl;
+                this->sendInterest(pitEntry, itr.second);
+            }
         }
 
     }
@@ -348,10 +375,7 @@ LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEnt
     {
         if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
         {
-            gateway::Nwd::route_table.erase(dest);
-            gateway::Coordinate tmp;
-            gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(tmp,0,gateway::RouteTableEntry::unreachable)));
-            break;
+            itr->second.set_status(gateway::RouteTableEntry::unreachable);   //将洪泛发送但仍未收到任何data的face设置为不可达
         }
     }
     printRouteTable();
@@ -364,7 +388,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                           const Face& inFace, const Data& data)
 {
     std::cout<<"******************************************************************"<<std::endl;
-    m_t.cancel();
+    m_t.cancel(); //取消超时定时器
     std::cout<<"收到data from ";
     for(auto itr : gateway::Nwd::neighbors_list)
     {
@@ -380,16 +404,14 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             for(auto it=ret.first;it!=ret.second;++it)
             {
                 if(it->second.get_nexthop()==itr.first)
-                    it->second.set_status(gateway::RouteTableEntry::reachable);
-                else
-                    it->second.set_status(gateway::RouteTableEntry::unknown);
+                    it->second.set_status(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
+                else if(it->second.get_status() == gateway::RouteTableEntry::flood)
+                    it->second.set_status(gateway::RouteTableEntry::unknown);  //将其他face标志为未知
 
             }
 
         }
     }
-
-
 
     printRouteTable();
     std::cout<<"******************************************************************"<<std::endl;

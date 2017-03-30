@@ -24,6 +24,8 @@ namespace nfd {
             os<<std::setw(15)<<"reachable";
         else if(re.get_status() == RouteTableEntry::sending)
             os<<std::setw(15)<<"sending";
+        else if(re.get_status() == RouteTableEntry::minlocal)
+            os<<std::setw(15)<<"minlocal";
         return os;
     }
     }
