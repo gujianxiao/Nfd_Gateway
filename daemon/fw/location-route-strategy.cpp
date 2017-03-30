@@ -92,6 +92,13 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     auto result=gateway::Nwd::route_table.find(dest);
     if(result!=gateway::Nwd::route_table.end())  //查找到了
     {
+
+        for(auto itr:gateway::Nwd::neighbors_list) {     //查找到了，也许根据邻居表进行更新，将新的邻居节点插入路由条目
+            double weight = gateway::distance(itr.first, dest); //计算邻居节点与目的节点的距离
+            auto tmp = gateway::Nwd::route_table.insert(std::make_pair(dest, gateway::RouteTableEntry(itr.first, weight,
+                                                                                                      gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
+        }
+
         auto range=gateway::Nwd::route_table.equal_range(dest);
         auto it=range.first;
         for(;it!=range.second;++it) //检查路由表中是否全部都是不可达
