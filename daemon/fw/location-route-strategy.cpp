@@ -415,7 +415,7 @@ LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEnt
     auto range=gateway::Nwd::route_table.equal_range(dest);
     for(auto itr=range.first;itr!=range.second;++itr)
     {
-        if(itr->second.get_sendstatus() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        if(itr->second.get_sendstatus() == gateway::RouteTableEntry::flood || itr->second.get_sendstatus() == gateway::RouteTableEntry::sending)  //已经处于洪泛状态
         {
             itr->second.set_reachstatus(gateway::RouteTableEntry::unreachable);   //将洪泛发送但仍未收到任何data的face设置为不可达
             itr->second.set_sendstatus(gateway::RouteTableEntry::notsending);
@@ -450,7 +450,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                     it->second.set_reachstatus(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
                     it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
                 }
-                else if(it->second.get_sendstatus() == gateway::RouteTableEntry::flood  ) {
+                else if(it->second.get_sendstatus() == gateway::RouteTableEntry::flood  || it->second.get_sendstatus() == gateway::RouteTableEntry::sending) {
                     it->second.set_reachstatus(gateway::RouteTableEntry::unknown);  //将其他洪泛的face标志为未知
                     it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
                 }
