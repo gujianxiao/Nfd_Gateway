@@ -151,6 +151,14 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
 
         }
 
+        it=range.first;
+        for(;it!=range.second;++it)
+        {
+            if(it->second.get_status() == gateway::RouteTableEntry::minlocal) //重新计算局部最小点，邻居表可能更新
+                it->second.set_status(gateway::RouteTableEntry::unknown) ;
+        }
+
+
 
         //查询权值最小的路径
 
@@ -191,7 +199,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         }
 
     }
-    if(minnexthop == gateway::Nwd::get_SelfCoordinate()) //自己即是局部最优点
+    if(minnexthop == gateway::Nwd::get_SelfCoordinate()) //自己即是局部最小点
     {
         std::cout<<"局部最小点  "<<minnexthop<<std::endl;
         for(auto itr:gateway::Nwd::neighbors_list){  //需要洪泛
@@ -213,10 +221,10 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         }
         route_table_itr->second.set_status(gateway::RouteTableEntry::minlocal);  //将自身标为局部最小点
     }
-    else
+    else   //不是局部最小点，根据贪心策略发送
     {
         ret.push_back(minface);
-        route_table_itr->second.set_status(gateway::RouteTableEntry::sending);
+        route_table_itr->second.set_status(gateway::RouteTableEntry::sending);  //将发送的接face设置为sending
     }
 
     //启动定时器，避免用户端超时
@@ -438,8 +446,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                 if(it->second.get_nexthop()==itr.first)
                     it->second.set_status(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
                 else if(it->second.get_status() == gateway::RouteTableEntry::flood  )
-                    it->second.set_status(gateway::RouteTableEntry::unknown);  //将其他face标志为未知
-
+                    it->second.set_status(gateway::RouteTableEntry::unknown);  //将其他洪泛的face标志为未知
             }
 
         }
