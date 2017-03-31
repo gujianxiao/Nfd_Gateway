@@ -280,11 +280,11 @@ LocationRouteStrategy::getNeighborsCoordinate(shared_ptr<pit::Entry> pitEntry)
 
 void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,const boost::system::error_code& err)
 {
-    if(err)
-    {
-        std::cout<<"定时器取消"<<std::endl;
-        return ;
-    }
+//    if(err)
+//    {
+//        std::cout<<"定时器取消"<<std::endl;
+//        return ;
+//    }
     std::cout<<"******************************************************************"<<std::endl;
     std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
     std::string Point_x,Point_y;
