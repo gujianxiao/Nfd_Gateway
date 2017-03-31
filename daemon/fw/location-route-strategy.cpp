@@ -123,16 +123,17 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                                                                       gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
             }
         }
-
+        bool  unreachable_flag=true;
         it=range.first;
         for(;it!=range.second;++it) //检查路由表中是否全部都是不可达
         {
             if (result->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
             {
+                unreachable_flag=false;
                 break;
             }
         }
-        if(it==range.second)
+        if( unreachable_flag )
         {
             std::cout << "目标不可达" << std::endl;
             return ret;   //返回空的结果
