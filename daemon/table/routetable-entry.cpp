@@ -12,20 +12,23 @@ namespace nfd {
     {
         os<<re.get_nexthop();
         os<<std::setw(15)<<re.get_weight();
-        if( re.get_status()==RouteTableEntry::neighbor)
+        if( re.get_reachstatus()==RouteTableEntry::neighbor)
             os<<std::setw(15)<<"neighbor";
-        else if(re.get_status() == RouteTableEntry::unreachable)
+        else if(re.get_reachstatus() == RouteTableEntry::unreachable)
             os<<std::setw(15)<<"unreachable";
-        else if(re.get_status() == RouteTableEntry::unknown )
+        else if(re.get_reachstatus() == RouteTableEntry::unknown )
             os<<std::setw(15)<<"unknown";
-        else if(re.get_status() == RouteTableEntry::flood)
-            os<<std::setw(15)<<"flood";
-        else if(re.get_status() == RouteTableEntry::reachable)
+        else if(re.get_reachstatus() == RouteTableEntry::reachable)
             os<<std::setw(15)<<"reachable";
-        else if(re.get_status() == RouteTableEntry::sending)
-            os<<std::setw(15)<<"sending";
-        else if(re.get_status() == RouteTableEntry::minlocal)
+        else if(re.get_reachstatus() == RouteTableEntry::minlocal)
             os<<std::setw(15)<<"minlocal";
+
+        if(re.get_sendstatus() == RouteTableEntry::sending)
+            os<<std::setw(15)<<"sending";
+        else if(re.get_sendstatus() == RouteTableEntry::notsending)
+            os<<std::setw(15)<<" ";
+        else if(re.get_sendstatus() == RouteTableEntry::flood)
+            os<<std::setw(15)<<"flooding";
         return os;
     }
     }

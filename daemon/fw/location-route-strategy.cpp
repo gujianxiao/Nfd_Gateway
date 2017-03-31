@@ -76,7 +76,7 @@ void
 LocationRouteStrategy::printRouteTable() const
 {
     std::cout<<"-------------------------------------------------------------"<<std::endl;
-    std::cout<<std::setw(15)<<"dest"<<std::setw(15)<<"nexthop"<<std::setw(15)<<"weight"<<std::setw(15)<<"status"<<std::endl;
+    std::cout<<std::setw(17)<<"dest"<<std::setw(17)<<"nexthop"<<std::setw(15)<<"weight"<<std::setw(15)<<"reach status"<<std::setw(15)<<"send status"<<std::endl;
     for(auto itr : gateway::Nwd::route_table)
     {
         std::cout<<itr.first<<itr.second<<std::endl;
@@ -120,14 +120,14 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 double weight = gateway::distance(itr.first, dest); //计算邻居节点与目的节点的距离
                 auto tmp = gateway::Nwd::route_table.insert(
                         std::make_pair(dest, gateway::RouteTableEntry(itr.first, weight,
-                                                                      gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
+                                                                      gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending)));  //将与目标初始值插入路由表
             }
         }
         bool  unreachable_flag=true;
         it=range.first;
         for(;it!=range.second;++it) //检查路由表中是否全部都是不可达
         {
-            if (it->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
+            if (it->second.get_reachstatus() != gateway::RouteTableEntry::unreachable) //目标不可达
             {
                 unreachable_flag=false;
                 break;
@@ -143,7 +143,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         it=range.first;
         for(;it!=range.second;++it)
         {
-            if(it->second.get_status() == gateway::RouteTableEntry::reachable)//存在可达路径，不用计算
+            if(it->second.get_reachstatus() == gateway::RouteTableEntry::reachable)//存在可达路径，不用计算
             {
                 std::cout<<"存在可达路径"<<std::endl;
                 ret.push_back(gateway::Nwd::neighbors_list.find(it->second.get_nexthop())->second);
@@ -155,8 +155,8 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         it=range.first;
         for(;it!=range.second;++it)
         {
-            if(it->second.get_status() == gateway::RouteTableEntry::minlocal) //重新计算局部最小点，邻居表可能更新
-                it->second.set_status(gateway::RouteTableEntry::unknown) ;
+            if(it->second.get_reachstatus() == gateway::RouteTableEntry::minlocal) //重新计算局部最小点，邻居表可能更新
+                it->second.set_reachstatus(gateway::RouteTableEntry::unknown) ;
         }
 
 
@@ -169,7 +169,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         {
             double weight  = itr->second.get_weight();    //路由表中的权值
 //            std::cout<<(*itr).second.first<<std::endl;
-            if(weight<minweight && itr->second.get_status() !=gateway::RouteTableEntry::unreachable )
+            if(weight<minweight && itr->second.get_reachstatus() !=gateway::RouteTableEntry::unreachable )
             {
                 minweight=weight;
                 minnexthop=itr->second.get_nexthop();
@@ -189,7 +189,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         for(auto itr:gateway::Nwd::neighbors_list)
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
-            auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown)));  //将与目标初始值插入路由表
+            auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending)));  //将与目标初始值插入路由表
             if(weight<minweight && itr.second->getId() != incoming_id)  //选择的路径不能包括来时的face
             {
                 minweight=weight;
@@ -213,19 +213,19 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 {
                     if(it->second.get_nexthop() == itr.first)
                     {
-                        it->second.set_status(gateway::RouteTableEntry::flood);  //将其他face标志为flood
+                        it->second.set_sendstatus(gateway::RouteTableEntry::flood);  //将其他face标志为flood
                         break;
                     }
                 }
 
             }
         }
-        route_table_itr->second.set_status(gateway::RouteTableEntry::minlocal);  //将自身标为局部最小点
+        route_table_itr->second.set_reachstatus(gateway::RouteTableEntry::minlocal);  //将自身标为局部最小点
     }
     else   //不是局部最小点，根据贪心策略发送
     {
         ret.push_back(minface);
-        route_table_itr->second.set_status(gateway::RouteTableEntry::sending);  //将发送的接face设置为sending
+        route_table_itr->second.set_sendstatus(gateway::RouteTableEntry::sending);  //将发送的接face设置为sending
     }
 
     //启动定时器，避免用户端超时
@@ -304,7 +304,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
 //            itr->second.set_status(gateway::RouteTableEntry::unreachable);
 //
 //        }
-        if(itr->second.get_status() == gateway::RouteTableEntry::minlocal)
+        if(itr->second.get_reachstatus() == gateway::RouteTableEntry::minlocal)
         {
             flood_flag=true;
         }
@@ -317,13 +317,14 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
         auto rang=gateway::Nwd::route_table.equal_range(dest);
         for(auto it=rang.first;it!=rang.second;++it)
         {
-            if(it->second.get_status() == gateway::RouteTableEntry::sending)
+            if(it->second.get_sendstatus() == gateway::RouteTableEntry::sending)
             {
-                it->second.set_status(gateway::RouteTableEntry::unreachable);  //将之前发送face标志为不可达
+                it->second.set_reachstatus(gateway::RouteTableEntry::unreachable);  //将之前发送face标志为不可达
+                it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
                 sending_cd=it->second.get_nexthop();
             }
             else
-                it->second.set_status(gateway::RouteTableEntry::flood);  //标志为flood;
+                it->second.set_sendstatus(gateway::RouteTableEntry::flood);  //标志为flood;
         }
         for(auto itr:gateway::Nwd::neighbors_list){   //洪泛
             if(itr.first != sending_cd) {  //不再向之前发送的face发送
@@ -414,9 +415,10 @@ LocationRouteStrategy::beforeExpirePendingInterest(shared_ptr<pit::Entry> pitEnt
     auto range=gateway::Nwd::route_table.equal_range(dest);
     for(auto itr=range.first;itr!=range.second;++itr)
     {
-        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
+        if(itr->second.get_sendstatus() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态
         {
-            itr->second.set_status(gateway::RouteTableEntry::unreachable);   //将洪泛发送但仍未收到任何data的face设置为不可达
+            itr->second.set_reachstatus(gateway::RouteTableEntry::unreachable);   //将洪泛发送但仍未收到任何data的face设置为不可达
+            itr->second.set_sendstatus(gateway::RouteTableEntry::notsending);
         }
     }
     printRouteTable();
@@ -444,10 +446,14 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             auto ret=gateway::Nwd::route_table.equal_range(dest);
             for(auto it=ret.first;it!=ret.second;++it)
             {
-                if(it->second.get_nexthop()==itr.first)
-                    it->second.set_status(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
-                else if(it->second.get_status() == gateway::RouteTableEntry::flood  )
-                    it->second.set_status(gateway::RouteTableEntry::unknown);  //将其他洪泛的face标志为未知
+                if(it->second.get_nexthop()==itr.first) {
+                    it->second.set_reachstatus(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
+                    it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
+                }
+                else if(it->second.get_sendstatus() == gateway::RouteTableEntry::flood  ) {
+                    it->second.set_reachstatus(gateway::RouteTableEntry::unknown);  //将其他洪泛的face标志为未知
+                    it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
+                }
             }
 
         }
