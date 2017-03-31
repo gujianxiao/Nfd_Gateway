@@ -4,7 +4,7 @@
 
 namespace nfd {
 	namespace gateway{
-	NFD_LOG_INIT("Nwd");
+//	NFD_LOG_INIT("Nwd");
 	const ndn::time::milliseconds Nwd::DEFAULT_EXPIRATION_PERIOD = ndn::time::milliseconds::max();
 	const uint64_t Nwd::DEFAULT_COST = 0;
     Nwd::RouteTable_Type Nwd::route_table={};
@@ -99,7 +99,7 @@ namespace nfd {
 //            routeweight_map[route_weight_key]=weight_val;   //更新权值
 //
 //        }
-        std::cout << "<< I: " << interest << std::endl;
+//        std::cout << "<< I: " << interest << std::endl;
 
         // Create new name, based on Interest's name
         Name dataName(interest.getName());
@@ -121,7 +121,7 @@ namespace nfd {
         // m_keyChain.sign(data, <certificate>);
 
         // Return Data packet to the requester
-        std::cout << ">> D: " << *data << std::endl;
+//        std::cout << ">> D: " << *data << std::endl;
         m_face.put(*data);
 
     }
@@ -448,7 +448,7 @@ namespace nfd {
 		std::time(&globe_timestamp);
 		std::cout<<"time:"<<globe_timestamp<<std::endl;
 		if(m_serialManager.time_belong_interest(interest_name,globe_timestamp)){			
-			if(handle_interest_busy==false){
+			if(!handle_interest_busy){
 				handle_interest_busy=true;
 				while(!receive_in_queue.empty()){
 					std::string recv_in=receive_in_queue.front();

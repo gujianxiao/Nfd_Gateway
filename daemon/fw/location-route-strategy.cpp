@@ -290,12 +290,12 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
     auto range=gateway::Nwd::route_table.equal_range(dest);
     for(auto itr=range.first;itr!=range.second;++itr)
     {
-        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态 ,将不能收到data的face标志为不可达
-        {
-            itr->second.set_status(gateway::RouteTableEntry::unreachable);
-
-        }
-        else if(itr->second.get_status() == gateway::RouteTableEntry::minlocal)
+//        if(itr->second.get_status() == gateway::RouteTableEntry::flood)  //已经处于洪泛状态 ,将不能收到data的face标志为不可达
+//        {
+//            itr->second.set_status(gateway::RouteTableEntry::unreachable);
+//
+//        }
+        if(itr->second.get_status() == gateway::RouteTableEntry::minlocal)
         {
             flood_flag=true;
         }
@@ -420,7 +420,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
                           const Face& inFace, const Data& data)
 {
     std::cout<<"******************************************************************"<<std::endl;
-    m_t.cancel(); //取消超时定时器
+//    m_t.cancel_one(); //取消超时定时器
     std::cout<<"收到data from ";
     for(auto itr : gateway::Nwd::neighbors_list)
     {
@@ -437,14 +437,13 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             {
                 if(it->second.get_nexthop()==itr.first)
                     it->second.set_status(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
-                else if(it->second.get_status() == gateway::RouteTableEntry::flood)
+                else if(it->second.get_status() == gateway::RouteTableEntry::flood  )
                     it->second.set_status(gateway::RouteTableEntry::unknown);  //将其他face标志为未知
 
             }
 
         }
     }
-
     printRouteTable();
     std::cout<<"******************************************************************"<<std::endl;
 
