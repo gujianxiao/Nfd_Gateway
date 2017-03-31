@@ -127,7 +127,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         it=range.first;
         for(;it!=range.second;++it) //检查路由表中是否全部都是不可达
         {
-            if (result->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
+            if (it->second.get_status() != gateway::RouteTableEntry::unreachable) //目标不可达
             {
                 unreachable_flag=false;
                 break;
