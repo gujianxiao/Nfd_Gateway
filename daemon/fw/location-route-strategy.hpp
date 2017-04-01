@@ -32,6 +32,8 @@
 #include "../nwd.hpp"
 #include "../table/routetable-entry.hpp"
 #include <sstream>
+#include <queue>
+#include <boost/asio/steady_timer.hpp>
 
 
 namespace nfd {
@@ -92,6 +94,7 @@ public:
   static const Name STRATEGY_NAME;
 private:
     boost::asio::steady_timer m_t;
+    std::queue<std::shared_ptr<boost::asio::steady_timer>> timer_queue;
     FaceId incoming_id;
 
 //  std::unordered_map<gateway::Coordinate,Fib::const_iterator,gateway::CoordinateHash,gateway::CoordinateEqual> neighbors_list;

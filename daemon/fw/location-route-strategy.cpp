@@ -228,15 +228,17 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         route_table_itr->second.set_sendstatus(gateway::RouteTableEntry::sending);  //将发送的接face设置为sending
 
         //启动定时器，避免用户端超时
-        pit::InRecordCollection::iterator lastExpiring =
-                std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
-                    return a.getExpiry() < b.getExpiry();
-                });
-
-        time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
-        time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
-        m_t.expires_from_now(std::chrono::milliseconds(1000));
-        m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
+//        pit::InRecordCollection::iterator lastExpiring =
+//                std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
+//                    return a.getExpiry() < b.getExpiry();
+//                });
+//
+//        time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
+//        time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
+        std::shared_ptr<boost::asio::steady_timer> timer_ptr(new boost::asio::steady_timer(getGlobalIoService()));
+        timer_ptr->expires_from_now(std::chrono::milliseconds(1000));
+        timer_ptr->async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
+        timer_queue.push(timer_ptr);
     }
 
     printRouteTable();
@@ -287,7 +289,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
 //        return ;
 //    }
 //    std::cout<<"******************************************************************"<<std::endl;
-//    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
+//
     std::string Point_x,Point_y;
     std::ostringstream os;
     os<<pitEntry->getName();
@@ -313,6 +315,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
     if(!flood_flag )  //没有洪泛过
     {
         std::cout<<"！！！发送超时，洪泛！！！"<<std::endl;
+        std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
         gateway::Coordinate sending_cd; //之前发送的位置
         auto rang=gateway::Nwd::route_table.equal_range(dest);
         for(auto it=rang.first;it!=rang.second;++it)
@@ -334,6 +337,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
         }
         printRouteTable();
     }
+    timer_queue.pop();
 
 //    std::cout<<"******************************************************************"<<std::endl;
 }
