@@ -226,18 +226,18 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     {
         ret.push_back(minface);
         route_table_itr->second.set_sendstatus(gateway::RouteTableEntry::sending);  //将发送的接face设置为sending
+
+        //启动定时器，避免用户端超时
+        pit::InRecordCollection::iterator lastExpiring =
+                std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
+                    return a.getExpiry() < b.getExpiry();
+                });
+
+        time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
+        time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
+        m_t.expires_from_now(std::chrono::milliseconds(1000));
+        m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
     }
-
-    //启动定时器，避免用户端超时
-    pit::InRecordCollection::iterator lastExpiring =
-            std::max_element(pitEntry->in_begin(), pitEntry->in_end(), [&](const pit::InRecord& a, const pit::InRecord& b){
-                return a.getExpiry() < b.getExpiry();
-            });
-
-    time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
-    time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
-    m_t.expires_from_now(std::chrono::milliseconds(1000));
-    m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
 
     printRouteTable();
     return  ret;
@@ -286,8 +286,8 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
 //        std::cout<<"定时器取消"<<std::endl;
 //        return ;
 //    }
-    std::cout<<"******************************************************************"<<std::endl;
-    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
+//    std::cout<<"******************************************************************"<<std::endl;
+//    std::cout<<"pit条目："<<pitEntry->getName()<<"超时"<<std::endl;
     std::string Point_x,Point_y;
     std::ostringstream os;
     os<<pitEntry->getName();
@@ -304,7 +304,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
 //            itr->second.set_status(gateway::RouteTableEntry::unreachable);
 //
 //        }
-        if(itr->second.get_reachstatus() == gateway::RouteTableEntry::minlocal)
+        if(itr->second.get_reachstatus() == gateway::RouteTableEntry::minlocal || itr->second.get_sendstatus() ==gateway::RouteTableEntry::received)
         {
             flood_flag=true;
         }
@@ -312,7 +312,7 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
     }
     if(!flood_flag )  //没有洪泛过
     {
-        std::cout<<"flooding"<<std::endl;
+        std::cout<<"！！！发送超时，洪泛！！！"<<std::endl;
         gateway::Coordinate sending_cd; //之前发送的位置
         auto rang=gateway::Nwd::route_table.equal_range(dest);
         for(auto it=rang.first;it!=rang.second;++it)
@@ -332,10 +332,10 @@ void LocationRouteStrategy::Interest_Expiry(shared_ptr<pit::Entry> pitEntry,cons
                 this->sendInterest(pitEntry, itr.second);
             }
         }
-
+        printRouteTable();
     }
-    printRouteTable();
-    std::cout<<"******************************************************************"<<std::endl;
+
+//    std::cout<<"******************************************************************"<<std::endl;
 }
 
 
@@ -448,7 +448,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             {
                 if(it->second.get_nexthop()==itr.first) {
                     it->second.set_reachstatus(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
-                    it->second.set_sendstatus(gateway::RouteTableEntry::notsending);
+                    it->second.set_sendstatus(gateway::RouteTableEntry::received);
                 }
                 else if(it->second.get_sendstatus() == gateway::RouteTableEntry::flood  || it->second.get_sendstatus() == gateway::RouteTableEntry::sending) {
                     it->second.set_reachstatus(gateway::RouteTableEntry::unknown);  //将其他洪泛的face标志为未知

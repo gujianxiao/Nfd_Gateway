@@ -12,7 +12,7 @@ namespace nfd{
     {
     public:
         enum Reach_Status {neighbor,unreachable,reachable,unknown,minlocal};
-        enum Send_Status {flood,sending,notsending};
+        enum Send_Status {flood,sending,notsending,received};
     private:
 //        gateway::Coordinate dest_;
         gateway::Coordinate nexthop_;

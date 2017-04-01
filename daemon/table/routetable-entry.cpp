@@ -29,6 +29,8 @@ namespace nfd {
             os<<std::setw(15)<<" ";
         else if(re.get_sendstatus() == RouteTableEntry::flood)
             os<<std::setw(15)<<"flooding";
+        else if(re.get_sendstatus() == RouteTableEntry::received)
+            os<<std::setw(15)<<"received";
         return os;
     }
     }
