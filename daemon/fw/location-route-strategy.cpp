@@ -236,7 +236,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
 
     time::steady_clock::TimePoint lastExpiry = lastExpiring->getExpiry();
     time::nanoseconds lastExpiryFromNow = lastExpiry - time::steady_clock::now();
-    m_t.expires_from_now(std::chrono::nanoseconds(1000));
+    m_t.expires_from_now(std::chrono::milliseconds(1000));
     m_t.async_wait(boost::bind(&LocationRouteStrategy::Interest_Expiry,this,pitEntry,boost::asio::placeholders::error));
 
     printRouteTable();
