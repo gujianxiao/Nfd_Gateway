@@ -87,12 +87,16 @@ int Nwd::ServerListenBroadcast(void)
 //                    printf("server register : %s\n", buf);
 
                     //如果与IP_FOUND吻合
-                    if( strncmp(buf, IP_FOUND,5) )
+                    std::cout<<"server receive : "<<buf<<std::endl;
+                    if( strncmp(buf, IP_FOUND,5) ==0 )
                     {
                         //send
+                        std::string point_x,point_y;
+                        getPointLocation(buf,point_x,point_y);
+//                        std::cout<<"pointx: "<<point_x<<"pointy: "<<point_y<<std::endl;
                         std::string remote_ip(inet_ntoa(from_addr.sin_addr));
                         bool flag=true;
-                        for(auto itr:ethface_map)
+                        for(auto itr:ethface_map)  //不能绑定本地端口
                         {
 
                             if(remote_ip == itr.second)
@@ -106,6 +110,7 @@ int Nwd::ServerListenBroadcast(void)
                             time_t current_timestamp;
                             std::time(&current_timestamp);
                             std::string ndp_discover_ack=IP_FOUND_ACK+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
+                            std::cout<<"server send ack :"<<ndp_discover_ack<<std::endl;
                             ret = sendto(sock, ndp_discover_ack.data(), ndp_discover_ack.size() + 1, 0, (struct sockaddr *)&from_addr, len);
                             if(0 > ret)
                             {
@@ -116,7 +121,8 @@ int Nwd::ServerListenBroadcast(void)
 
                             std::string remote_name = std::string("udp://") + remote_ip;
                             std::cout << "remote_name:" << remote_name << std::endl;
-                            ribRegisterPrefix("/nfd/",remote_name);
+
+                            ribRegisterPrefix("/nfd/"+point_x+"/"+point_y,remote_name);
                         }
 //						goto _out;	//退出
                     }

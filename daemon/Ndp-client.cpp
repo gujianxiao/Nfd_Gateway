@@ -125,7 +125,7 @@ int Nwd::ClientBroadcast(void)
 //
     //send
 
-
+    std::cout<<"client sned :"<<ndp_discover<<std::endl;
     ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
     while(1)
     {
@@ -167,9 +167,9 @@ int Nwd::ClientBroadcast(void)
                         goto _out;
                     }
 //                    printf("client find : %s\n", buf);
-//                    std::cout<<"client receive ack: "<<buf<<std::endl;
+                    std::cout<<"client receive ack: "<<buf<<std::endl;
                     //如果与IP_FOUND吻合
-                    if( strncmp(buf, IP_FOUND_ACK,8) ==0 )
+                    if( strncmp(buf, IP_FOUND_ACK,9) ==0 )
                     {
                         printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
                     }

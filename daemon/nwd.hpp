@@ -192,6 +192,8 @@ namespace nfd{
         int
         SetBroadcast(int sock, struct sockaddr_in *broadcast_addr);
 
+		void
+		getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y);
 
         void
         onNdpData(const Interest& interest, const Data& data);

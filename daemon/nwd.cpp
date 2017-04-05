@@ -107,6 +107,17 @@ namespace nfd {
 
     }
 
+	void
+	Nwd::getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y)
+	{
+		std::string::size_type x_start=interest_name.find('/',1);
+		std::string::size_type x_end = interest_name.find('/',x_start+1);
+		std::string::size_type y_start=x_end;
+		std::string::size_type y_end=interest_name.find('/',y_start+1);
+		point_x = interest_name.substr(x_start+1,x_end-x_start-1);
+		point_y = interest_name.substr(y_start+1,y_end-y_start-1);
+	}
+
     void
     Nwd::sendNdpDiscoverPacket()
     {
