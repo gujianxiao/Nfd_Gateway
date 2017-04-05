@@ -99,7 +99,7 @@ namespace nfd {
 //		ribRegisterPrefix();
         strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
 
-        sendNdpDiscoverPacket();
+
 
     }
 
@@ -176,7 +176,27 @@ namespace nfd {
 	void
 	Nwd::NdponInterest(const ndn::InterestFilter& filter, const Interest& interest)
 	{
+        Name dataName(interest.getName());
+        dataName
+                .append("testApp") // add "testApp" component to Interest name
+                .appendVersion();  // add "version" component (current UNIX timestamp in milliseconds)
 
+        static const std::string content = "HELLO KITTY1111";
+
+        // Create Data packet
+        shared_ptr<Data> data = make_shared<Data>();
+        data->setName(dataName);
+        data->setFreshnessPeriod(time::seconds(10));
+        data->setContent(reinterpret_cast<const uint8_t*>(content.c_str()), content.size());
+
+        // Sign Data packet with default identity
+        m_keyChain.sign(*data);
+        // m_keyChain.sign(data, <identityName>);
+        // m_keyChain.sign(data, <certificate>);
+
+        // Return Data packet to the requester
+//        std::cout << ">> D: " << *data << std::endl;
+        m_face.put(*data);
 	}
 
 
@@ -715,6 +735,7 @@ namespace nfd {
   Nwd::onSuccess(const ControlParameters& commandSuccessResult, const std::string& message)
   {
 	 std::cout << message << ": " << commandSuccessResult << std::endl;
+     sendNdpDiscoverPacket(); //先将发送ndp请求放在这里
   }
 
   void
