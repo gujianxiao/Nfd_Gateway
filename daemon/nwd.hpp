@@ -66,8 +66,7 @@ namespace nfd{
 
 	namespace gateway{
 
-    extern int ServerListenBroadcast();
-    extern int ClientBroadcast();
+
 
 	using namespace ndn::nfd;
 
@@ -178,6 +177,22 @@ namespace nfd{
         static Reverse_Neighbor_Type reverse_neighbors_list;
 
 	private:
+        int
+        ServerListenBroadcast();
+
+        int
+        ClientBroadcast();
+
+        int
+        GetLocalMac(int sock, char *vmac);
+
+        int
+        GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr);
+
+        int
+        SetBroadcast(int sock, struct sockaddr_in *broadcast_addr);
+
+
         void
         onNdpData(const Interest& interest, const Data& data);
 
@@ -257,7 +272,7 @@ namespace nfd{
   		search_dataset_type(std::string In_Name,WsnData dataval);
 
 		void
-  		ribRegisterPrefix();
+  		ribRegisterPrefix(std::string face_name,std::string faceName);
 
 		void
 		strategyChoiceSet(std::string name,std::string strategy);
@@ -291,8 +306,8 @@ namespace nfd{
 		std::map<std::string,std::string> wsn_location_map;
         std::map<std::string,std::string> wifi_location_map;
 		std::shared_ptr<Forwarder> m_forwarder;
-		std::string remote_name;
-		std::string face_name;
+//		std::string remote_name;
+//		std::string face_name;
 		int wsn_nodes;
 		bool handle_interest_busy;
 //        std::map<std::pair<int,int>,int> routeweight_map;

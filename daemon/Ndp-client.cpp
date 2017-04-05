@@ -12,18 +12,17 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include "nwd.hpp"
+#include "Ndp.hpp"
 
 namespace nfd{
     namespace gateway{
 
 
-#define PORT			38888			//端口号
-#define IP_FOUND 		"Npd"		//IP发现命令
-#define IP_FOUND_ACK 	"Npd_ACK"	//IP发现应答命令
-#define IFNAME			"eth0"			//网卡名字
+
 
 /***** 获取本地Mac地址 ******************************************************************************************/
-int GetLocalMac(int sock, char *vmac)
+int Nwd::GetLocalMac(int sock, char *vmac)
 {
     struct sockaddr sa;
     struct ifreq ifr;
@@ -49,7 +48,7 @@ int GetLocalMac(int sock, char *vmac)
 
 
 /***** 获取接口广播地址 *****************************************************************************************/
-int GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr)
+int Nwd::GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr)
 {
     struct ifreq ifr;
 
@@ -68,7 +67,7 @@ int GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr)
 
 
 /***** 设置广播 *************************************************************************************************/
-int SetBroadcast(int sock, struct sockaddr_in *broadcast_addr)
+int Nwd::SetBroadcast(int sock, struct sockaddr_in *broadcast_addr)
 {
     int ret = -1;
     int so_broadcast = 1;						//设置连接侦测超时时间为1秒
@@ -87,17 +86,20 @@ int SetBroadcast(int sock, struct sockaddr_in *broadcast_addr)
 
 
 /***** 客户端广播 ***********************************************************************************************/
-int ClientBroadcast(void)
+int Nwd::ClientBroadcast(void)
 {
     int ret = -1;
     int sock = -1;
-    char buf[20];
+    char buf[1024];
     fd_set readfd;
     struct timeval timeout;
     struct sockaddr_in broadcast_addr;	//本地地址
     struct sockaddr_in from_addr;		//客户端地址
     socklen_t len = sizeof(struct sockaddr_in);
 
+    time_t current_timestamp;
+    std::time(&current_timestamp);
+    std::string ndp_discover=IP_FOUND+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
     //socket
     sock = socket(AF_INET, SOCK_DGRAM, 0);
     if(0 > sock)
@@ -122,7 +124,9 @@ int ClientBroadcast(void)
 
 //
     //send
-    ret = sendto(sock, IP_FOUND, strlen(IP_FOUND) + 1, 0, (struct sockaddr *)&broadcast_addr, len);
+
+
+    ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
     while(1)
     {
         if(0 > ret)
@@ -163,9 +167,9 @@ int ClientBroadcast(void)
                         goto _out;
                     }
 //                    printf("client find : %s\n", buf);
-
+//                    std::cout<<"client receive ack: "<<buf<<std::endl;
                     //如果与IP_FOUND吻合
-                    if( strstr(buf, IP_FOUND_ACK) )
+                    if( strncmp(buf, IP_FOUND_ACK,8) ==0 )
                     {
                         printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
                     }
@@ -179,7 +183,7 @@ int ClientBroadcast(void)
     //close
     close(sock);
     return 0;
-    _out:
+_out:
     close(sock);
     return -1;
 }

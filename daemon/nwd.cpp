@@ -92,15 +92,17 @@ namespace nfd {
     void
     Nwd::NdpInitialize()
     {
-//		boost::this_thread::sleep(boost::posix_time::seconds(2));
+//
 //		getEthernetFace();
         //广播发送
 //		face_name="/ndp/discover";
 //		std::cout<<"face name:"<<face_name<<std::endl;
 //		ribRegisterPrefix();
 //        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
-        threadGroup.create_thread(ServerListenBroadcast);
-        threadGroup.create_thread(ClientBroadcast);
+        getEthernetFace(); //获取本地网址
+        boost::this_thread::sleep(boost::posix_time::seconds(2));
+        threadGroup.create_thread(boost::bind(&Nwd::ServerListenBroadcast,this));
+        threadGroup.create_thread(boost::bind(&Nwd::ClientBroadcast,this));
 
 
     }
@@ -379,7 +381,7 @@ namespace nfd {
 					std::ostringstream oss;
 //					std::cout<<(*pit_entryIn_itr).getFace()->getLocalUri()<<std::endl;
 					oss<<(*pit_entryIn_itr).getFace()->getRemoteUri()<<std::endl;
-					remote_name=oss.str();
+					std::string remote_name=oss.str();
 					std::string::size_type pos=remote_name.rfind(":");
 					remote_name.erase(pos);
 					std::cout<<remote_name<<std::endl;
@@ -442,12 +444,12 @@ namespace nfd {
 
 
 	void
-	Nwd::ribRegisterPrefix()
+	Nwd::ribRegisterPrefix(std::string face_name,std::string faceName)
 	{
 //		m_name=face_name;
-		const std::string& faceName=remote_name;
+//		const std::string& faceName=remote_name;
 		FaceIdFetcher::start(m_face, m_controller, faceName, true,
-                       [this] (const uint32_t faceId) {
+                       [this,face_name] (const uint32_t faceId) {
                          ControlParameters parameters;
                          parameters
                            .setName(face_name)
@@ -737,7 +739,6 @@ namespace nfd {
   Nwd::onSuccess(const ControlParameters& commandSuccessResult, const std::string& message)
   {
 	 std::cout << message << ": " << commandSuccessResult << std::endl;
-     sendNdpDiscoverPacket(); //先将发送ndp请求放在这里
   }
 
   void

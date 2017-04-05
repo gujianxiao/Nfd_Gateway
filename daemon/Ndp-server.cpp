@@ -7,21 +7,22 @@
 #include <errno.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include "nwd.hpp"
+#include "Ndp.hpp"
 
 namespace nfd{
     namespace gateway{
 
-#define PORT			38888			//端口号
-#define IP_FOUND 		"Npd"		//IP发现命令
-#define IP_FOUND_ACK 	"Npd_ACK"	//IP发现应答命令
+
+
 
 /***** 服务器监听广播 *******************************************************************************************/
-int ServerListenBroadcast(void)
+int Nwd::ServerListenBroadcast(void)
 {
     int ret = -1;
     int sock = -1;
     socklen_t len = -1;
-    char buf[20];
+    char buf[1024];
     fd_set readfd;
     struct timeval timeout;
     struct sockaddr_in local_addr;		//本地地址
@@ -86,16 +87,37 @@ int ServerListenBroadcast(void)
 //                    printf("server register : %s\n", buf);
 
                     //如果与IP_FOUND吻合
-                    if( strstr(buf, IP_FOUND) )
+                    if( strncmp(buf, IP_FOUND,5) )
                     {
                         //send
-                        ret = sendto(sock, IP_FOUND_ACK, strlen(IP_FOUND_ACK) + 1, 0, (struct sockaddr *)&from_addr, len);
-                        if(0 > ret)
+                        std::string remote_ip(inet_ntoa(from_addr.sin_addr));
+                        bool flag=true;
+                        for(auto itr:ethface_map)
                         {
-                            perror("server send err");
-                            goto _out;
+
+                            if(remote_ip == itr.second)
+                            {
+                                flag=false;
+                                break;
+                            }
+
                         }
-                        printf("server register %s\n", inet_ntoa(from_addr.sin_addr));
+                        if(flag == true) {
+                            time_t current_timestamp;
+                            std::time(&current_timestamp);
+                            std::string ndp_discover_ack=IP_FOUND_ACK+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
+                            ret = sendto(sock, ndp_discover_ack.data(), ndp_discover_ack.size() + 1, 0, (struct sockaddr *)&from_addr, len);
+                            if(0 > ret)
+                            {
+                                perror("server send err");
+                                goto _out;
+                            }
+                            printf("server register %s\n", inet_ntoa(from_addr.sin_addr));
+
+                            std::string remote_name = std::string("udp://") + remote_ip;
+                            std::cout << "remote_name:" << remote_name << std::endl;
+                            ribRegisterPrefix("/nfd/",remote_name);
+                        }
 //						goto _out;	//退出
                     }
 
