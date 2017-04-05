@@ -64,6 +64,8 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
+
+		//读取ＵＳＢ０，后续修改读取多个网络接口
         int fdusb = open(USB_PATH_PORT, O_RDWR);
         if(fdusb == 0) {
 
@@ -73,10 +75,109 @@ namespace nfd {
 //
             threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
         }
+
+		//邻居发现接口
+		m_face.setInterestFilter("/ndp",
+								 bind(&Nwd::onInterest, this, _1, _2),
+								 ndn::RegisterPrefixSuccessCallback(),
+								 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+
+        NdpInitialize();
     	m_face.processEvents();
 		
 	}
 
+    //ndp初始化
+    void
+    Nwd::NdpInitialize()
+    {
+        getEthernetFace();
+        //广播发送
+		face_name="/ndp/discover";
+		std::cout<<"face name:"<<face_name<<std::endl;
+//		ribRegisterPrefix();
+        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
+
+        sendNdpDiscoverPacket();
+
+    }
+
+    void
+    Nwd::sendNdpDiscoverPacket()
+    {
+        Interest interest(Name("/ndp/discover/test"));
+        interest.setInterestLifetime(time::milliseconds(1000));
+        interest.setMustBeFresh(true);
+        // boost::this_thread::sleep(boost::posix_time::seconds(2));
+        m_face.expressInterest(interest,
+                               bind(&Nwd::onNdpData, this,  _1, _2),
+                               bind(&Nwd::onNdpTimeout, this, _1));
+
+        std::cout << "Sending " << interest << std::endl;
+    }
+
+    void
+    Nwd::onNdpData(const Interest& interest, const Data& data)
+    {
+        std::cout << data << std::endl;
+
+        std::cout << data.getContent().value()<<std::endl;
+    }
+
+    void
+    Nwd::onNdpTimeout(const Interest& interest)
+    {
+        std::cout << "Timeout " << interest << std::endl;
+    }
+
+
+
+	void
+	Nwd::getEthernetFace()
+	{
+		int sockfd;
+		struct ifconf ifconf;
+		struct ifreq *ifreq;
+		char buf[512];//缓冲区
+		//初始化ifconf
+		ifconf.ifc_len =512;
+		ifconf.ifc_buf = buf;
+		if ((sockfd =socket(AF_INET,SOCK_DGRAM,0))<0)
+		{
+			perror("socket" );
+			exit(1);
+		}
+		ioctl(sockfd, SIOCGIFCONF, &ifconf); //获取所有接口信息
+
+		//接下来一个一个的获取IP地址
+		ifreq = (struct ifreq*)ifconf.ifc_buf;
+//		printf("ifconf.ifc_len:%d\n",ifconf.ifc_len);
+//		printf("sizeof (struct ifreq):%d\n",sizeof (struct ifreq));
+        char eth_buf[16];
+        char ip_buf[32];
+		for (int i=(ifconf.ifc_len/sizeof (struct ifreq)); i>0; i--)
+		{
+			if(ifreq->ifr_flags == AF_INET){ //for ipv4
+                snprintf(eth_buf,16,"%s",ifreq->ifr_name);
+//				printf("name =[%s]\n" , ifreq->ifr_name);
+                snprintf(ip_buf,32,"%s",inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr));
+//				printf("local addr = [%s]\n" ,inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr));
+				ifreq++;
+                if(strncmp(eth_buf,"eth",3) == 0)
+                {
+                    ethface_map.insert(std::make_pair(std::string(eth_buf),std::string(ip_buf)));
+                }
+
+			}
+		}
+	}
+
+	void
+	Nwd::NdponInterest(const ndn::InterestFilter& filter, const Interest& interest)
+	{
+
+	}
 
 
     //目前为测试接口，后续添加更多功能

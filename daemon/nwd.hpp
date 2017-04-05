@@ -32,6 +32,14 @@
 #include "coordinate.h"
 #include "table/routetable-entry.hpp"
 
+//获取网络设备
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+
 namespace ndn{
     class Face;
     class InterestFilter;
@@ -167,7 +175,23 @@ namespace nfd{
         static Reverse_Neighbor_Type reverse_neighbors_list;
 
 	private:
+        void
+        onNdpData(const Interest& interest, const Data& data);
 
+        void
+        onNdpTimeout(const Interest& interest);
+
+        void
+        sendNdpDiscoverPacket();
+
+        void
+        NdpInitialize();
+
+		void
+		getEthernetFace() ;
+
+		void
+		NdponInterest(const ndn::InterestFilter& filter, const Interest& interest);
 
 		void
   		onInterest(const ndn::InterestFilter& filter, const Interest& interest);
@@ -271,7 +295,7 @@ namespace nfd{
 //        std::map<std::pair<int,int>,int> routeweight_map;
         double longitude;  //经度
         double latitude;  //纬度
-
+        std::unordered_map<std::string,std::string> ethface_map;
 
 
         std::queue<std::string> receive_in_queue;
