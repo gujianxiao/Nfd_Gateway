@@ -76,11 +76,11 @@ namespace nfd {
             threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
         }
 
-		//邻居发现接口
-		m_face.setInterestFilter("/ndp/discover",
-								 bind(&Nwd::onInterest, this, _1, _2),
-								 ndn::RegisterPrefixSuccessCallback(),
-								 bind(&Nwd::onRegisterFailed, this, _1, _2));
+//		//邻居发现接口  不能这么做
+//		m_face.setInterestFilter("/ndp/discover",
+//								 bind(&Nwd::onInterest, this, _1, _2),
+//								 ndn::RegisterPrefixSuccessCallback(),
+//								 bind(&Nwd::onRegisterFailed, this, _1, _2));
 
 
         NdpInitialize();
@@ -92,14 +92,15 @@ namespace nfd {
     void
     Nwd::NdpInitialize()
     {
-		boost::this_thread::sleep(boost::posix_time::seconds(2));
-		getEthernetFace();
+//		boost::this_thread::sleep(boost::posix_time::seconds(2));
+//		getEthernetFace();
         //广播发送
-		face_name="/ndp/discover";
-		std::cout<<"face name:"<<face_name<<std::endl;
+//		face_name="/ndp/discover";
+//		std::cout<<"face name:"<<face_name<<std::endl;
 //		ribRegisterPrefix();
-        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
-
+//        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
+        threadGroup.create_thread(ServerListenBroadcast);
+        threadGroup.create_thread(ClientBroadcast);
 
 
     }

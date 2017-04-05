@@ -66,6 +66,9 @@ namespace nfd{
 
 	namespace gateway{
 
+    extern int ServerListenBroadcast();
+    extern int ClientBroadcast();
+
 	using namespace ndn::nfd;
 
 	class serial_manager;
