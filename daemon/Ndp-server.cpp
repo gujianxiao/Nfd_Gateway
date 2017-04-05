@@ -106,18 +106,20 @@ int Nwd::ServerListenBroadcast(void)
                             }
 
                         }
-                        if(flag == true) {
+                        if(flag == true) {  //不是本地端口
                             time_t current_timestamp;
                             std::time(&current_timestamp);
                             std::string ndp_discover_ack=IP_FOUND_ACK+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
                             std::cout<<"server send ack :"<<ndp_discover_ack<<std::endl;
+
+                            //发送ＡＣＫ
                             ret = sendto(sock, ndp_discover_ack.data(), ndp_discover_ack.size() + 1, 0, (struct sockaddr *)&from_addr, len);
                             if(0 > ret)
                             {
                                 perror("server send err");
                                 goto _out;
                             }
-                            printf("server register %s\n", inet_ntoa(from_addr.sin_addr));
+//                            printf("server register %s\n", inet_ntoa(from_addr.sin_addr));
 
                             std::string remote_name = std::string("udp://") + remote_ip;
                             std::cout << "remote_name:" << remote_name << std::endl;

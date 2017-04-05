@@ -161,6 +161,7 @@ int Nwd::ClientBroadcast(void)
                 {
                     //recieve
                     ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *)&from_addr, &len);
+                    std::string remote_ip(inet_ntoa(from_addr.sin_addr));
                     if(0 > ret)
                     {
                         perror("server recieve err");
@@ -171,7 +172,14 @@ int Nwd::ClientBroadcast(void)
                     //如果与IP_FOUND吻合
                     if( strncmp(buf, IP_FOUND_ACK,9) ==0 )
                     {
-                        printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
+                        std::string point_x,point_y;
+                        getPointLocation(buf,point_x,point_y);
+
+                        std::string remote_name = std::string("udp://") + remote_ip;
+                        std::cout << "remote_name:" << remote_name << std::endl;
+
+                        ribRegisterPrefix("/nfd/"+point_x+"/"+point_y,remote_name);
+//                        printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
                     }
 
                 }
