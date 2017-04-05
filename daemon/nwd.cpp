@@ -26,7 +26,7 @@ namespace nfd {
 	void
 	Nwd::initialize()
 	{
-		m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
+//		m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
 
 		m_face.setInterestFilter("/wsn/topo",
                              bind(&Nwd::Topo_onInterest, this, _1, _2),
@@ -77,7 +77,7 @@ namespace nfd {
         }
 
 		//邻居发现接口
-		m_face.setInterestFilter("/ndp",
+		m_face.setInterestFilter("/ndp/discover",
 								 bind(&Nwd::onInterest, this, _1, _2),
 								 ndn::RegisterPrefixSuccessCallback(),
 								 bind(&Nwd::onRegisterFailed, this, _1, _2));
@@ -92,7 +92,8 @@ namespace nfd {
     void
     Nwd::NdpInitialize()
     {
-        getEthernetFace();
+		boost::this_thread::sleep(boost::posix_time::seconds(2));
+		getEthernetFace();
         //广播发送
 		face_name="/ndp/discover";
 		std::cout<<"face name:"<<face_name<<std::endl;
