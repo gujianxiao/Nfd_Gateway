@@ -204,6 +204,8 @@ namespace nfd{
 //
 //        void
 //        sendNdpDiscoverPacket();
+        void
+        WlanHotSpotStart();
 
         void
         NdpInitialize();

@@ -51,12 +51,12 @@ namespace nfd {
 		getEthernetFace(); //获取本地网址
 		for(auto itr:ethface_map)
 		{
+
 			if(strncmp(itr.first.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
 			{
 				//启动wifi热点
+				threadGroup.create_thread(boost::bind(&Nwd::WlanHotSpotStart,this));
 
-                std::cout<<"启动wlan热点"<<std::endl;
-				system("echo 123 | sudo create_ap wlan0 eth0 ndnhotspot 12345678");
 			}
 		}
 
@@ -151,7 +151,12 @@ namespace nfd {
 //        std::cout << "Timeout " << interest << std::endl;
 //    }
 
-
+	void
+	Nwd::WlanHotSpotStart()
+	{
+		std::cout<<"启动wlan热点"<<std::endl;
+		system("echo 123 | sudo create_ap wlan0 eth0 ndnhotspot 12345678");
+	}
 
 	void
 	Nwd::getEthernetFace()
