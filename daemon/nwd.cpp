@@ -54,6 +54,8 @@ namespace nfd {
 			if(strncmp(itr.second.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
 			{
 				//启动wifi热点
+
+                std::cout<<"启动wlan热点"<<std::endl;
 				system("echo 123 | sudo create_ap wlan0 eth0 ndnhotspot 12345678");
 			}
 		}
