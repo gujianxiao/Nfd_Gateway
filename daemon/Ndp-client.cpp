@@ -148,8 +148,8 @@ int Nwd::ClientBroadcast(void)
         FD_ZERO(&readfd);
         //将套接字文件描述符加入读集合
         int maxsock=0;
-        for(int i=0;i<sock_vec.size();i++) {
-            if(maxsock<sock_vec[i]);
+        for(unsigned int i=0;i<sock_vec.size();i++) {
+            if(maxsock<sock_vec[i])
                 maxsock=sock_vec[i];
             FD_SET(sock_vec[i], &readfd);
         }

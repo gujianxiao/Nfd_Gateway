@@ -39,6 +39,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
+#include <stdlib.h>
 
 namespace ndn{
     class Face;
@@ -195,14 +196,14 @@ namespace nfd{
 		void
 		getPointLocation(std::string interest_name,std::string& point_x,std::string& point_y);
 
-        void
-        onNdpData(const Interest& interest, const Data& data);
+//        void
+//        onNdpData(const Interest& interest, const Data& data);
 
-        void
-        onNdpTimeout(const Interest& interest);
-
-        void
-        sendNdpDiscoverPacket();
+//        void
+//        onNdpTimeout(const Interest& interest);
+//
+//        void
+//        sendNdpDiscoverPacket();
 
         void
         NdpInitialize();

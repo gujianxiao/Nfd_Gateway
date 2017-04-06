@@ -28,22 +28,6 @@ namespace nfd {
 	{
 //		m_forwarder->getStrategyChoice().install(std::make_shared<fw::LocationRouteStrategy>(*m_forwarder,fw::LocationRouteStrategy::STRATEGY_NAME));
 
-		m_face.setInterestFilter("/wsn/topo",
-                             bind(&Nwd::Topo_onInterest, this, _1, _2),
-                             ndn::RegisterPrefixSuccessCallback(),
-                             bind(&Nwd::onRegisterFailed, this, _1, _2));
-
-		
-		m_face.setInterestFilter("/wsn",
-									 bind(&Nwd::onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
-
-		m_face.setInterestFilter("/wsn/location",
-									 bind(&Nwd::Location_onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
-
 		m_face.setInterestFilter("/wifi/register",
 									 bind(&Nwd::Wifi_Register_onInterest, this, _1, _2),
 									 ndn::RegisterPrefixSuccessCallback(),
@@ -64,10 +48,35 @@ namespace nfd {
                                  ndn::RegisterPrefixSuccessCallback(),
                                  bind(&Nwd::onRegisterFailed, this, _1, _2));
 
+		getEthernetFace(); //获取本地网址
+		for(auto itr:ethface_map)
+		{
+			if(strncmp(itr.second.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
+			{
+				//启动wifi热点
+				system("sudo create_ap wlan0 eth0 ndnhotspot 12345678");
+			}
+		}
 
 		//读取ＵＳＢ０，后续修改读取多个网络接口
         int fdusb = open(USB_PATH_PORT, O_RDWR);
         if(fdusb == 0) {
+			m_face.setInterestFilter("/wsn/topo",
+									 bind(&Nwd::Topo_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+
+			m_face.setInterestFilter("/wsn",
+									 bind(&Nwd::onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+			m_face.setInterestFilter("/wsn/location",
+									 bind(&Nwd::Location_onInterest, this, _1, _2),
+									 ndn::RegisterPrefixSuccessCallback(),
+									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+
 
             threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
 
@@ -75,12 +84,6 @@ namespace nfd {
 //
             threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
         }
-
-//		//邻居发现接口  不能这么做
-//		m_face.setInterestFilter("/ndp/discover",
-//								 bind(&Nwd::onInterest, this, _1, _2),
-//								 ndn::RegisterPrefixSuccessCallback(),
-//								 bind(&Nwd::onRegisterFailed, this, _1, _2));
 
 
         NdpInitialize();
@@ -99,7 +102,7 @@ namespace nfd {
 //		std::cout<<"face name:"<<face_name<<std::endl;
 //		ribRegisterPrefix();
 //        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
-        getEthernetFace(); //获取本地网址
+
         boost::this_thread::sleep(boost::posix_time::seconds(2));
         threadGroup.create_thread(boost::bind(&Nwd::ServerListenBroadcast,this));
         threadGroup.create_thread(boost::bind(&Nwd::ClientBroadcast,this));
@@ -118,33 +121,33 @@ namespace nfd {
 		point_y = interest_name.substr(y_start+1,y_end-y_start-1);
 	}
 
-    void
-    Nwd::sendNdpDiscoverPacket()
-    {
-        Interest interest(Name("/ndp/discover/test"));
-        interest.setInterestLifetime(time::milliseconds(1000));
-        interest.setMustBeFresh(true);
-        // boost::this_thread::sleep(boost::posix_time::seconds(2));
-        m_face.expressInterest(interest,
-                               bind(&Nwd::onNdpData, this,  _1, _2),
-                               bind(&Nwd::onNdpTimeout, this, _1));
-
-        std::cout << "Sending " << interest << std::endl;
-    }
-
-    void
-    Nwd::onNdpData(const Interest& interest, const Data& data)
-    {
-        std::cout << data << std::endl;
-
-        std::cout << data.getContent().value()<<std::endl;
-    }
-
-    void
-    Nwd::onNdpTimeout(const Interest& interest)
-    {
-        std::cout << "Timeout " << interest << std::endl;
-    }
+//    void
+//    Nwd::sendNdpDiscoverPacket()
+//    {
+//        Interest interest(Name("/ndp/discover/test"));
+//        interest.setInterestLifetime(time::milliseconds(1000));
+//        interest.setMustBeFresh(true);
+//        // boost::this_thread::sleep(boost::posix_time::seconds(2));
+//        m_face.expressInterest(interest,
+//                               bind(&Nwd::onNdpData, this,  _1, _2),
+//                               bind(&Nwd::onNdpTimeout, this, _1));
+//
+//        std::cout << "Sending " << interest << std::endl;
+//    }
+//
+//    void
+//    Nwd::onNdpData(const Interest& interest, const Data& data)
+//    {
+//        std::cout << data << std::endl;
+//
+//        std::cout << data.getContent().value()<<std::endl;
+//    }
+//
+//    void
+//    Nwd::onNdpTimeout(const Interest& interest)
+//    {
+//        std::cout << "Timeout " << interest << std::endl;
+//    }
 
 
 
