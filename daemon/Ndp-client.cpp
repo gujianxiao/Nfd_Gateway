@@ -18,17 +18,16 @@
 namespace nfd{
     namespace gateway{
 
-
-
+std::vector<std::string> EthName={"eth0","wlan0"};   //网络接口名字
 
 /***** 获取本地Mac地址 ******************************************************************************************/
-int Nwd::GetLocalMac(int sock, char *vmac)
+int Nwd::GetLocalMac(int sock, char *vmac,std::string ifname)
 {
     struct sockaddr sa;
     struct ifreq ifr;
     char mac[6];
 
-    strncpy(ifr.ifr_name, IFNAME, IFNAMSIZ);
+    strncpy(ifr.ifr_name, ifname.data(), IFNAMSIZ);
     ifr.ifr_name[IFNAMSIZ - 1] = 0;
     //获取Mac地址
     memset(mac, 0, sizeof(mac));
@@ -48,12 +47,12 @@ int Nwd::GetLocalMac(int sock, char *vmac)
 
 
 /***** 获取接口广播地址 *****************************************************************************************/
-int Nwd::GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr)
+int Nwd::GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr,std::string ifname)
 {
     struct ifreq ifr;
 
     //获取网络接口字符串名字
-    strncpy( ifr.ifr_name, IFNAME, strlen(IFNAME)+1 );
+    strncpy( ifr.ifr_name, ifname.data(), ifname.size()+1 );
     //获取网络接口的广播地址
     if(0 > ioctl(sock, SIOCGIFBRDADDR, &ifr))
     {
@@ -101,32 +100,42 @@ int Nwd::ClientBroadcast(void)
     std::time(&current_timestamp);
     std::string ndp_discover=IP_FOUND+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
     //socket
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(0 > sock)
+    std::vector<int> sock_vec;  //保存sock
+    for(auto itr:EthName)
     {
-        perror("client socket err");
-        return -1;
+        sock = socket(AF_INET, SOCK_DGRAM, 0);
+        std::cout<<"sock is "<<sock<<std::endl;
+        if(0 > sock)
+        {
+            perror("client socket err");
+//            return -1;
+        }
+
+        //get broadcast addr
+        if( GetBroadcastAddr(sock, &broadcast_addr,itr) )
+        {
+            printf("get  %s broadcast addr failed!\n",itr.data());
+            close(sock);
+            continue;
+//            goto _out;
+        }
+
+        //set broadcast
+        if( SetBroadcast(sock, &broadcast_addr) )
+        {
+            printf("set %s broadcast failed!\n",itr.data());
+            close(sock);
+            continue;
+//            goto _out;
+        }
+
+        //send
+
+        std::cout<<"client sned :"<<ndp_discover<<std::endl;
+        ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
+        sock_vec.push_back(sock);
     }
 
-    //get broadcast addr
-    if( GetBroadcastAddr(sock, &broadcast_addr) )
-    {
-        printf("get broadcast addr failed!\n");
-        goto _out;
-    }
-
-    //set broadcast
-    if( SetBroadcast(sock, &broadcast_addr) )
-    {
-        printf("set broadcast failed!\n");
-        goto _out;
-    }
-
-//
-    //send
-
-    std::cout<<"client sned :"<<ndp_discover<<std::endl;
-    ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
     while(1)
     {
         if(0 > ret)
@@ -138,14 +147,19 @@ int Nwd::ClientBroadcast(void)
         //文件描述符集合清零
         FD_ZERO(&readfd);
         //将套接字文件描述符加入读集合
-        FD_SET(sock, &readfd);
+        int maxsock=0;
+        for(int i=0;i<sock_vec.size();i++) {
+            if(maxsock<sock_vec[i]);
+                maxsock=sock_vec[i];
+            FD_SET(sock_vec[i], &readfd);
+        }
 
         //超时时间
         timeout.tv_sec = 5;			//秒
         timeout.tv_usec = 0;		//微秒
 
         //监听套接字sock是否有数据可读，超时为5秒
-        ret = select(sock+1, &readfd, NULL, NULL, NULL);
+        ret = select(maxsock+1, &readfd, NULL, NULL, NULL);
         switch(ret)
         {
             case -1:
@@ -157,31 +171,30 @@ int Nwd::ClientBroadcast(void)
             default:
             {
                 //sock套接口有数据可读
-                if( FD_ISSET(sock, &readfd) )
-                {
-                    //recieve
-                    ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *)&from_addr, &len);
-                    std::string remote_ip(inet_ntoa(from_addr.sin_addr));
-                    if(0 > ret)
-                    {
-                        perror("server recieve err");
-                        goto _out;
-                    }
+                for(auto sock : sock_vec) {
+                    if (FD_ISSET(sock, &readfd)) {
+                        //recieve
+                        ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &from_addr, &len);
+                        std::string remote_ip(inet_ntoa(from_addr.sin_addr));
+                        if (0 > ret) {
+                            perror("server recieve err");
+                            goto _out;
+                        }
 //                    printf("client find : %s\n", buf);
-                    std::cout<<"client receive ack: "<<buf<<std::endl;
-                    //如果与IP_FOUND吻合
-                    if( strncmp(buf, IP_FOUND_ACK,9) ==0 )
-                    {
-                        std::string point_x,point_y;
-                        getPointLocation(buf,point_x,point_y);
+                        std::cout << "client receive ack: " << buf << std::endl;
+                        //如果与IP_FOUND吻合
+                        if (strncmp(buf, IP_FOUND_ACK, 9) == 0) {
+                            std::string point_x, point_y;
+                            getPointLocation(buf, point_x, point_y);
 
-                        std::string remote_name = std::string("udp://") + remote_ip;
-                        std::cout << "remote_name:" << remote_name << std::endl;
+                            std::string remote_name = std::string("udp://") + remote_ip;
+                            std::cout << "remote_name:" << remote_name << std::endl;
 
-                        ribRegisterPrefix("/nfd/"+point_x+"/"+point_y,remote_name);
+                            ribRegisterPrefix("/nfd/" + point_x + "/" + point_y, remote_name);
 //                        printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
-                    }
+                        }
 
+                    }
                 }
 
             }

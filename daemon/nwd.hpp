@@ -184,10 +184,10 @@ namespace nfd{
         ClientBroadcast();
 
         int
-        GetLocalMac(int sock, char *vmac);
+        GetLocalMac(int sock, char *vmac,std::string);
 
         int
-        GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr);
+        GetBroadcastAddr(int sock, struct sockaddr_in *broadcast_addr,std::string);
 
         int
         SetBroadcast(int sock, struct sockaddr_in *broadcast_addr);
