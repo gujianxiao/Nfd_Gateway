@@ -54,7 +54,7 @@ namespace nfd {
 			if(strncmp(itr.second.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
 			{
 				//启动wifi热点
-				system("sudo create_ap wlan0 eth0 ndnhotspot 12345678");
+				system("echo 123 | sudo create_ap wlan0 eth0 ndnhotspot 12345678");
 			}
 		}
 
