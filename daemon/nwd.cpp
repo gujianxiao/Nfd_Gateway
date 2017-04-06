@@ -179,7 +179,7 @@ namespace nfd {
                 snprintf(ip_buf,32,"%s",inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr));
 //				printf("local addr = [%s]\n" ,inet_ntoa(((struct sockaddr_in*)&(ifreq->ifr_addr))->sin_addr));
 				ifreq++;
-                if(strncmp(eth_buf,"eth",3) == 0)
+                if(strncmp(eth_buf,"eth",3) == 0 || strncmp(eth_buf,"wlan",4) == 0)
                 {
                     ethface_map.insert(std::make_pair(std::string(eth_buf),std::string(ip_buf)));
                 }
