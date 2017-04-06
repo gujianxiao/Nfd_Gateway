@@ -51,7 +51,7 @@ namespace nfd {
 		getEthernetFace(); //获取本地网址
 		for(auto itr:ethface_map)
 		{
-			if(strncmp(itr.second.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
+			if(strncmp(itr.first.data(),"wlan",4) ==0 )  //如果有wlan接口启动热点
 			{
 				//启动wifi热点
 
