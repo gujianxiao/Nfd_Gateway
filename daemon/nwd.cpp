@@ -60,38 +60,54 @@ namespace nfd {
 			}
 		}
 
-		//读取ＵＳＢ０，后续修改读取多个网络接口
-        int fdusb = open(USB_PATH_PORT, O_RDWR);
-        if(fdusb == 0) {
-			m_face.setInterestFilter("/wsn/topo",
-									 bind(&Nwd::Topo_onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
 
+        threadGroup.create_thread(boost::bind(&Nwd::wsnPeriodFind,this)); //发现wsn网络
 
-			m_face.setInterestFilter("/wsn",
-									 bind(&Nwd::onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+        NdpInitialize(); //NDP初始化，发现邻居
 
-			m_face.setInterestFilter("/wsn/location",
-									 bind(&Nwd::Location_onInterest, this, _1, _2),
-									 ndn::RegisterPrefixSuccessCallback(),
-									 bind(&Nwd::onRegisterFailed, this, _1, _2));
+        strategyChoiceSet("/nfd","ndn:/localhost/nfd/strategy/location-route");  //设置路由策略
 
-
-            threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
-
-            threadGroup.create_thread(boost::bind(&Nwd::time_sync_init, this))->detach();
-//
-            threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
-        }
-
-
-        NdpInitialize();
     	m_face.processEvents();
 		
 	}
+
+    void
+    Nwd::wsnPeriodFind()   //wsn网络接口的周期性发现
+    {
+        while(true)
+        {
+            boost::this_thread::sleep(boost::posix_time::seconds(10));
+            //读取ＵＳＢ０，后续修改读取多个网络接口
+            int fdusb = open(USB_PATH_PORT, O_RDWR);
+            if(fdusb == 0) {
+                m_face.setInterestFilter("/wsn/topo",
+                                         bind(&Nwd::Topo_onInterest, this, _1, _2),
+                                         ndn::RegisterPrefixSuccessCallback(),
+                                         bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+
+                m_face.setInterestFilter("/wsn",
+                                         bind(&Nwd::onInterest, this, _1, _2),
+                                         ndn::RegisterPrefixSuccessCallback(),
+                                         bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+                m_face.setInterestFilter("/wsn/location",
+                                         bind(&Nwd::Location_onInterest, this, _1, _2),
+                                         ndn::RegisterPrefixSuccessCallback(),
+                                         bind(&Nwd::onRegisterFailed, this, _1, _2));
+
+
+                threadGroup.create_thread(boost::bind(&Nwd::listen_wsn_data, this, &m_serialManager))->detach();
+
+                threadGroup.create_thread(boost::bind(&Nwd::time_sync_init, this))->detach();
+//
+                threadGroup.create_thread(boost::bind(&Nwd::manage_wsn_topo, this, &m_serialManager))->detach();
+                break;
+            }
+        }
+
+
+    }
 
     //ndp初始化
     void
@@ -105,10 +121,66 @@ namespace nfd {
 //		ribRegisterPrefix();
 //        strategyChoiceSet(face_name,"ndn:/localhost/nfd/strategy/broadcast");
 
-        boost::this_thread::sleep(boost::posix_time::seconds(2));
+
         threadGroup.create_thread(boost::bind(&Nwd::ServerListenBroadcast,this));
         threadGroup.create_thread(boost::bind(&Nwd::ClientBroadcast,this));
 
+
+    }
+
+    void
+    Nwd::NeighborsInitialize()   //邻居表初始化
+    {
+        boost::this_thread::sleep(boost::posix_time::seconds(2));
+        getNeighborsCoordinate();  //邻居表初始化
+        printNeighborsTable();
+    }
+
+    void
+    Nwd::getNeighborsCoordinate()  //初始化、更新邻居表
+    {
+        auto fib_entry_itr=m_forwarder->getFib().begin();
+
+
+        for(;fib_entry_itr!=m_forwarder->getFib().end();fib_entry_itr++){
+            std::ostringstream os;
+            os<<(*fib_entry_itr).getPrefix()<<std::endl;
+            std::string fib_entry_name=os.str();
+            /*查找最近路由接口并转发，目前路由前缀为/nfd,后接地理位置*/
+            if(fib_entry_name.find("/nfd")!=std::string::npos && fib_entry_name.find_first_of("0123456789") != std::string::npos) {
+                std::cout<<"fib name is: "<<fib_entry_name;
+                std::string::size_type pos1=fib_entry_name.find('/',1);
+                std::string::size_type pos2=fib_entry_name.find('/',pos1+1);
+                //      std::string::size_type pos3=fib_entry_name.find('/',pos2+1);
+
+                double position_x = std::stod(fib_entry_name.substr(pos1+1,pos2-pos1-1));
+                double position_y = std::stod(fib_entry_name.substr(pos2+1));
+//            std::cout<<"position is ("<<position_x<<","<<position_y<<")"<<std::endl;
+                fib::NextHopList nexthops;
+                nexthops=fib_entry_itr->getNextHops();
+                fib::NextHopList::const_iterator it = nexthops.begin();
+                for (;it != nexthops.end();++it) {
+                    shared_ptr <Face> outFace = it->getFace();
+                    gateway::Nwd::neighbors_list.insert(make_pair(gateway::Coordinate(position_x, position_y), outFace));
+                    gateway::Nwd::reverse_neighbors_list.insert(
+                            make_pair(outFace, gateway::Coordinate(position_x, position_y)));
+
+                }
+            }
+
+        }
+    }
+
+    void
+    Nwd::printNeighborsTable() const
+    {
+        std::cout<<"-------------------------------------------------------------"<<std::endl;
+        std::cout<<std::setw(15)<<"neighbor"<<std::setw(15)<<"face"<<std::endl;
+        for(auto itr : gateway::Nwd::neighbors_list)
+        {
+            std::cout<<itr.first<<std::setw(15)<<itr.second->getRemoteUri()<<std::endl;
+        }
+        std::cout<<"-------------------------------------------------------------"<<std::endl;
 
     }
 
@@ -491,6 +563,28 @@ namespace nfd {
                        },
                        bind(&Nwd::onObtainFaceIdFailure, this, _1));
 	}
+
+    void
+    Nwd::ribUnregisterPrefix(std::string m_name,std::string faceName)
+    {
+
+        FaceIdFetcher::start(m_face, m_controller, faceName, false,
+                             [this,m_name] (const uint32_t faceId) {
+                                 ControlParameters parameters;
+                                 parameters
+                                         .setName(m_name)
+                                         .setFaceId(faceId)
+                                         .setOrigin(m_origin);
+
+                                 m_controller
+                                         .start<RibUnregisterCommand>(parameters,
+                                                                      bind(&Nwd::onSuccess, this, _1,
+                                                                           "Successful in unregistering name"),
+                                                                      bind(&Nwd::onError, this, _1, _2,
+                                                                           "Failed in unregistering name"));
+                             },
+                             bind(&Nwd::onObtainFaceIdFailure, this, _1));
+    }
 
 	void
 	Nwd::time_sync_init(){

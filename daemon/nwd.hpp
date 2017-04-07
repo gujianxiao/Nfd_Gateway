@@ -81,7 +81,7 @@ namespace nfd{
 	class Nwd{
 	public:
         using RouteTable_Type= std::unordered_multimap<Coordinate,RouteTableEntry,CoordinateHash,CoordinateEqual> ;
-        typedef std::unordered_map<Coordinate,std::shared_ptr<nfd::face::Face>,CoordinateHash,CoordinateEqual> Neighbor_Type;
+        typedef std::unordered_multimap<Coordinate,std::shared_ptr<nfd::face::Face>,CoordinateHash,CoordinateEqual> Neighbor_Type;
         typedef std::unordered_map<std::shared_ptr<nfd::face::Face>,Coordinate> Reverse_Neighbor_Type;
 		Nwd(nfd::Nfd &);
 
@@ -178,6 +178,18 @@ namespace nfd{
         static Reverse_Neighbor_Type reverse_neighbors_list;
 
 	private:
+        void
+        NeighborsInitialize();
+
+        void
+        printNeighborsTable() const;
+
+        void
+        getNeighborsCoordinate();
+
+        void
+        wsnPeriodFind();
+
         int
         ServerListenBroadcast();
 
@@ -278,6 +290,9 @@ namespace nfd{
 
 		void
   		ribRegisterPrefix(std::string face_name,std::string faceName);
+
+        void
+        ribUnregisterPrefix(std::string m_name,std::string faceName);
 
 		void
 		strategyChoiceSet(std::string name,std::string strategy);

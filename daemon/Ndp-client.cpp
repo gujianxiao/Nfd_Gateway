@@ -101,43 +101,50 @@ int Nwd::ClientBroadcast(void)
     std::string ndp_discover=IP_FOUND+to_string(longitude)+"/"+to_string(latitude)+"/"+std::to_string(current_timestamp);
     //socket
     std::vector<int> sock_vec;  //保存sock
-    for(auto itr:EthName)
+    std::unordered_multimap<std::string,std::string> ribItemName;
+    while(true)
     {
-        sock = socket(AF_INET, SOCK_DGRAM, 0);
-        std::cout<<"sock is "<<sock<<std::endl;
-        if(0 > sock)
+        for(auto itr:ribItemName)
         {
-            perror("client socket err");
-//            return -1;
+            ribUnregisterPrefix(itr.first,itr.second);
         }
 
-        //get broadcast addr
-        if( GetBroadcastAddr(sock, &broadcast_addr,itr) )
+        for(auto itr:EthName)
         {
-            printf("get  %s broadcast addr failed!\n",itr.data());
-            close(sock);
-            continue;
-//            goto _out;
+            sock = socket(AF_INET, SOCK_DGRAM, 0);
+    //        std::cout<<"sock is "<<sock<<std::endl;
+            if(0 > sock)
+            {
+                perror("client socket err");
+    //            return -1;
+            }
+
+            //get broadcast addr
+            if( GetBroadcastAddr(sock, &broadcast_addr,itr) )
+            {
+                printf("get  %s broadcast addr failed!\n",itr.data());
+                close(sock);
+                continue;
+    //            goto _out;
+            }
+
+            //set broadcast
+            if( SetBroadcast(sock, &broadcast_addr) )
+            {
+                printf("set %s broadcast failed!\n",itr.data());
+                close(sock);
+                continue;
+    //            goto _out;
+            }
+
+            //send
+
+            std::cout<<"client sned :"<<ndp_discover<<std::endl;
+            ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
+            sock_vec.push_back(sock);
         }
 
-        //set broadcast
-        if( SetBroadcast(sock, &broadcast_addr) )
-        {
-            printf("set %s broadcast failed!\n",itr.data());
-            close(sock);
-            continue;
-//            goto _out;
-        }
 
-        //send
-
-        std::cout<<"client sned :"<<ndp_discover<<std::endl;
-        ret = sendto(sock, ndp_discover.data(), ndp_discover.size() + 1, 0, (struct sockaddr *)&broadcast_addr, len);
-        sock_vec.push_back(sock);
-    }
-
-    while(1)
-    {
         if(0 > ret)
         {
             perror("server send err");
@@ -158,52 +165,63 @@ int Nwd::ClientBroadcast(void)
         timeout.tv_sec = 5;			//秒
         timeout.tv_usec = 0;		//微秒
 
+        boost::this_thread::sleep(boost::posix_time::seconds(2));  //线程等待发送NDP和NDP确认
+        ribItemName.clear();
         //监听套接字sock是否有数据可读，超时为5秒
-        ret = select(maxsock+1, &readfd, NULL, NULL, NULL);
-        switch(ret)
-        {
-            case -1:
-                printf("select error!\n");
-                goto _out;
-            case 0:
-                printf("time out!\n");
-                break;
-            default:
-            {
-                //sock套接口有数据可读
-                for(auto sock : sock_vec) {
-                    if (FD_ISSET(sock, &readfd)) {
-                        //recieve
-                        ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &from_addr, &len);
-                        std::string remote_ip(inet_ntoa(from_addr.sin_addr));
-                        if (0 > ret) {
-                            perror("server recieve err");
-                            goto _out;
-                        }
+        while (true) {
+            ret = select(maxsock + 1, &readfd, NULL, NULL, &timeout);
+            switch (ret) {
+                case -1:
+                    printf("select error!\n");
+                    goto _out;
+                case 0:
+                    printf("time out!\n");
+                    break;
+                default: {
+                    //sock套接口有数据可读
+                    for (auto sock : sock_vec) {
+                        if (FD_ISSET(sock, &readfd)) {
+                            //recieve
+                            ret = recvfrom(sock, buf, sizeof(buf), 0, (struct sockaddr *) &from_addr, &len);
+                            std::string remote_ip(inet_ntoa(from_addr.sin_addr));
+                            if (0 > ret) {
+                                perror("server recieve err");
+                                goto _out;
+                            }
 //                    printf("client find : %s\n", buf);
-                        std::cout << "client receive ack: " << buf << std::endl;
-                        //如果与IP_FOUND吻合
-                        if (strncmp(buf, IP_FOUND_ACK, 9) == 0) {
-                            std::string point_x, point_y;
-                            getPointLocation(buf, point_x, point_y);
+                            std::cout << "client receive ack: " << buf << std::endl;
+                            //如果与IP_FOUND吻合
+                            if (strncmp(buf, IP_FOUND_ACK, 9) == 0) {
+                                std::string point_x, point_y;
+                                getPointLocation(buf, point_x, point_y);
 
-                            std::string remote_name = std::string("udp://") + remote_ip;
-                            std::cout << "remote_name:" << remote_name << std::endl;
-
-                            ribRegisterPrefix("/nfd/" + point_x + "/" + point_y, remote_name);
+                                std::string remote_name = std::string("udp://") + remote_ip;
+                                std::cout << "remote_name:" << remote_name << std::endl;
+                                std::string fibitemname("/nfd/" + point_x + "/" + point_y);
+                                ribRegisterPrefix(fibitemname, remote_name);
+                                ribItemName.insert(std::make_pair(fibitemname,remote_name));
 //                        printf("client find %s\n", inet_ntoa(from_addr.sin_addr));
+                            }
+
                         }
-
                     }
-                }
 
+                }
             }
+            if(ret ==0)
+                break;
         }
+        for(auto sock : sock_vec) {
+            close(sock);
+        }
+        sock_vec.clear();
+        neighbors_list.clear();  //清空邻居表
+        getNeighborsCoordinate();  //邻居表初始化、更新
+        printNeighborsTable();  //打印邻居表
+
+        boost::this_thread::sleep(boost::posix_time::seconds(10));  //周期发送
     }
 
-    //close
-    close(sock);
-    return 0;
 _out:
     close(sock);
     return -1;
