@@ -76,7 +76,7 @@ void
 LocationRouteStrategy::printRouteTable() const
 {
     std::cout<<"-------------------------------------------------------------"<<std::endl;
-    std::cout<<std::setw(17)<<"dest"<<std::setw(17)<<"nexthop"<<std::setw(15)<<"weight"<<std::setw(15)<<"reach status"<<std::setw(15)<<"send status"<<std::endl;
+    std::cout<<std::setw(17)<<"dest"<<std::setw(17)<<"nexthop"<<std::setw(8)<<"weight"<<std::setw(13)<<"reach status"<<std::setw(12)<<"send status"<<std::setw(8)<<"face"<<std::endl;
     for(auto itr : gateway::Nwd::route_table)
     {
         std::cout<<itr.first<<itr.second<<std::endl;
@@ -90,13 +90,13 @@ std::vector<shared_ptr<Face>>
 LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Entry> pitEntry)
 {
     std::vector<shared_ptr<Face>> ret;
-    auto neighbors_list_itr=gateway::Nwd::neighbors_list.find(dest);  //首先查询邻居列表，找到直接返回
-    if(neighbors_list_itr != gateway::Nwd::neighbors_list.end())//在邻居列表里
-    {
-        std::cout<<"邻居列表中"<<std::endl;
-        ret.push_back(neighbors_list_itr->second);
-        return ret; //邻居列表查询到，直接返回
-    }
+//    auto neighbors_list_itr=gateway::Nwd::neighbors_list.find(dest);  //首先查询邻居列表，找到直接返回
+//    if(neighbors_list_itr != gateway::Nwd::neighbors_list.end())//在邻居列表里
+//    {
+//        std::cout<<"邻居列表中"<<std::endl;
+//        ret.push_back(neighbors_list_itr->second);
+//        return ret; //邻居列表查询到，直接返回
+//    }
 
     //查询路由表
     double minweight  =std::numeric_limits<double>::max();
@@ -106,6 +106,13 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
     auto result=gateway::Nwd::route_table.find(dest);
     if(result!=gateway::Nwd::route_table.end())  //查找到了
     {
+        if(result->second.get_reachstatus() == gateway::RouteTableEntry::neighbor)
+        {
+            std::cout<<"邻居节点"<<std::endl;
+            ret.push_back(result->second.get_face());
+            return ret;
+        }
+
         auto range=gateway::Nwd::route_table.equal_range(dest);
         auto it=range.first;
 
@@ -120,7 +127,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
                 double weight = gateway::distance(itr.first, dest); //计算邻居节点与目的节点的距离
                 auto tmp = gateway::Nwd::route_table.insert(
                         std::make_pair(dest, gateway::RouteTableEntry(itr.first, weight,
-                                                                      gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending)));  //将与目标初始值插入路由表
+                                                                      gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending,itr.second)));  //将与目标初始值插入路由表
             }
         }
         bool  unreachable_flag=true;
@@ -173,7 +180,8 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
             {
                 minweight=weight;
                 minnexthop=itr->second.get_nexthop();
-                minface=gateway::Nwd::neighbors_list.find(itr->second.get_nexthop())->second;
+//                minface=gateway::Nwd::neighbors_list.find(itr->second.get_nexthop())->second;
+                minface=itr->second.get_face();
                 route_table_itr=itr;
             }
         }
@@ -189,7 +197,7 @@ LocationRouteStrategy::cal_Nexthos(gateway::Coordinate& dest,shared_ptr<pit::Ent
         for(auto itr:gateway::Nwd::neighbors_list)
         {
             double weight=gateway::distance(itr.first,dest); //计算邻居节点与目的节点的距离
-            auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending)));  //将与目标初始值插入路由表
+            auto tmp= gateway::Nwd::route_table.insert(std::make_pair(dest,gateway::RouteTableEntry(itr.first,weight,gateway::RouteTableEntry::unknown,gateway::RouteTableEntry::notsending,itr.second)));  //将与目标初始值插入路由表
             if(weight<minweight && itr.second->getId() != incoming_id)  //选择的路径不能包括来时的face
             {
                 minweight=weight;
@@ -450,7 +458,7 @@ LocationRouteStrategy::beforeSatisfyInterest(shared_ptr<pit::Entry> pitEntry,
             auto ret=gateway::Nwd::route_table.equal_range(dest);
             for(auto it=ret.first;it!=ret.second;++it)
             {
-                if(it->second.get_nexthop()==itr.first) {
+                if(it->second.get_nexthop()==itr.first && it->second.get_reachstatus() != gateway::RouteTableEntry::neighbor) {
                     it->second.set_reachstatus(gateway::RouteTableEntry::reachable);  //将收到data包的face标志为可达
                     it->second.set_sendstatus(gateway::RouteTableEntry::received);
                 }

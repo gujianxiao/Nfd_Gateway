@@ -14,6 +14,7 @@
 #include <net/if.h>
 #include "nwd.hpp"
 #include "Ndp.hpp"
+#include "table/routetable-entry.hpp"
 
 namespace nfd{
     namespace gateway{
@@ -83,6 +84,26 @@ int Nwd::SetBroadcast(int sock, struct sockaddr_in *broadcast_addr)
     return 0;
 }
 
+
+void Nwd::RoutingtableUpdate()
+{
+    for(RouteTable_Type::iterator itr=route_table.begin();itr!= route_table.end();)   //先将路由表中的邻居内容清空
+    {
+        if(itr->second.get_reachstatus() == gateway::RouteTableEntry::neighbor)
+        {
+            itr=route_table.erase(itr);
+        }
+        else
+            ++itr;
+    }
+
+
+    for(Neighbor_Type::iterator itr=neighbors_list.begin();itr!= neighbors_list.end();++itr)
+    {
+        route_table.insert(std::make_pair(itr->first,RouteTableEntry(itr->first, 0, gateway::RouteTableEntry::neighbor,gateway::RouteTableEntry::notsending,itr->second)));
+    }
+
+}
 
 /***** 客户端广播 ***********************************************************************************************/
 int Nwd::ClientBroadcast(void)
@@ -218,6 +239,7 @@ int Nwd::ClientBroadcast(void)
         neighbors_list.clear();  //清空邻居表
         getNeighborsCoordinate();  //邻居表初始化、更新
         printNeighborsTable();  //打印邻居表
+        RoutingtableUpdate();  //更新路由表
 
         boost::this_thread::sleep(boost::posix_time::seconds(10));  //周期发送
     }

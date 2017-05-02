@@ -33,7 +33,6 @@
 #include "../table/routetable-entry.hpp"
 #include <sstream>
 #include <queue>
-#include <boost/asio/steady_timer.hpp>
 
 
 namespace nfd {

@@ -179,6 +179,9 @@ namespace nfd{
 
 	private:
         void
+        RoutingtableUpdate();
+
+        void
         NeighborsInitialize();
 
         void
